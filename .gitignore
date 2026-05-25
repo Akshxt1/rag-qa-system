@@ -1,0 +1,23 @@
+# Virtual environment
+.venv/
+
+# Environment variables (keep your keys safe!)
+.env
+
+# Vector store (too large for GitHub)
+vector_store/
+uploaded_docs/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
