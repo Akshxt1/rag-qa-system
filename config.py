@@ -40,3 +40,12 @@ def validate():
         errors.append("GEMINI_API_KEY is not set in .env")
     if errors:
         raise EnvironmentError("\n".join(errors))
+    
+
+# ── Retrieval Improvements ────────────────────────────────────────────────────
+ENABLE_HYBRID_SEARCH: bool = os.getenv("ENABLE_HYBRID_SEARCH", "true").lower() == "true"
+ENABLE_RERANKING: bool = os.getenv("ENABLE_RERANKING", "true").lower() == "true"
+RERANKER_MODEL: str = os.getenv(
+    "RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"
+)
+CANDIDATE_K: int = int(os.getenv("CANDIDATE_K", 30))
