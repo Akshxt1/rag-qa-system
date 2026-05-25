@@ -1,6 +1,7 @@
 import sys
 import os
 import uuid
+import math
 from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -22,49 +23,31 @@ html, body, [class*="css"] { font-family: 'Space Grotesk', sans-serif; }
 .main .block-container { padding-top: 1.5rem; max-width: 1200px; }
 [data-testid="stSidebar"] { background: #161b22; border-right: 1px solid #30363d; }
 [data-testid="stSidebar"] * { font-size: 0.88rem; }
-
 .hero-title { font-size: 2.2rem; font-weight: 700;
   background: linear-gradient(135deg, #58a6ff 0%, #bc8cff 60%, #ff7b72 100%);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .hero-subtitle { color: #8b949e; font-size: 0.95rem; margin-bottom: 1.2rem; }
-
 .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
 .badge-ready { background: #1a3a2a; color: #3fb950; border: 1px solid #3fb950; }
 .badge-empty { background: #2d1a1a; color: #f85149; border: 1px solid #f85149; }
-
 .chat-user { background: #1c2128; border: 1px solid #30363d;
   border-radius: 12px 12px 4px 12px; padding: 0.75rem 1rem; margin: 0.4rem 0; color: #e6edf3; }
 .chat-assistant { background: #0f1923; border: 1px solid #21262d;
   border-left: 3px solid #58a6ff; border-radius: 4px 12px 12px 12px;
   padding: 0.75rem 1.1rem; margin: 0.4rem 0; color: #e6edf3; line-height: 1.65; }
 .resp-time { font-size: 0.72rem; color: #8b949e; font-family: 'JetBrains Mono', monospace; margin-top: 0.3rem; }
-
 .source-card { background: #161b22; border: 1px solid #30363d;
   border-radius: 8px; padding: 0.65rem 0.9rem; margin: 0.35rem 0; font-size: 0.82rem; }
 .source-card .fname { color: #58a6ff; font-weight: 600; font-size: 0.78rem; }
-.source-card .sc { float: right; color: #3fb950; font-weight: 600; font-size: 0.75rem;
-  background: #1a3a2a; padding: 0.08rem 0.4rem; border-radius: 10px; }
+.source-card .sc { float: right; font-weight: 600; font-size: 0.75rem;
+  padding: 0.08rem 0.4rem; border-radius: 10px; }
 .source-card .ex { color: #8b949e; margin-top: 0.35rem; font-size: 0.79rem; line-height: 1.5; }
-
 .stat-box { background: #161b22; border: 1px solid #30363d;
   border-radius: 8px; padding: 0.7rem; text-align: center; }
 .stat-num { font-size: 1.4rem; font-weight: 700; color: #58a6ff; }
 .stat-label { font-size: 0.68rem; color: #8b949e; text-transform: uppercase; letter-spacing: 0.07em; }
-
-.chat-item { display: flex; align-items: center; justify-content: space-between;
-  padding: 0.35rem 0.5rem; border-radius: 6px; margin: 0.15rem 0; cursor: pointer; }
-.chat-item:hover { background: #21262d; }
-.chat-item-active { background: #1c2845 !important; border-left: 2px solid #58a6ff; }
-.chat-item-name { color: #e6edf3; font-size: 0.83rem; white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
-
-.doc-item { display: flex; align-items: center; justify-content: space-between;
-  padding: 0.3rem 0.4rem; border-radius: 6px; margin: 0.1rem 0; }
-.doc-item:hover { background: #21262d; }
-
 .section-label { color: #8b949e; font-size: 0.7rem; font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.08em; margin: 0.8rem 0 0.4rem 0; }
-
 .stButton > button { background: #1f6feb; color: white; border: none;
   border-radius: 6px; font-weight: 600; font-size: 0.85rem; }
 .stButton > button:hover { background: #388bfd; }
@@ -102,6 +85,8 @@ def init_state():
             "max_tokens":      1024,
             "top_k":           5,
             "score_threshold": 0.0,
+            "use_hybrid":      True,
+            "use_reranking":   True,
         }
 
 
@@ -112,6 +97,7 @@ init_state()
 def active_messages():
     return st.session_state.chats[st.session_state.active_chat]["messages"]
 
+
 def create_chat():
     cid = str(uuid.uuid4())[:8]
     n = len(st.session_state.chats) + 1
@@ -120,12 +106,22 @@ def create_chat():
     }
     st.session_state.active_chat = cid
 
+
 def delete_chat(cid):
     if len(st.session_state.chats) == 1:
         create_chat()
     del st.session_state.chats[cid]
     if st.session_state.active_chat == cid:
         st.session_state.active_chat = list(st.session_state.chats.keys())[-1]
+
+
+
+def score_color(pct: int) -> str:
+    if pct >= 70:
+        return "#3fb950"
+    elif pct >= 45:
+        return "#d29922"
+    return "#8b949e"
 
 
 # ── Load pipeline ─────────────────────────────────────────────────────────────
@@ -148,19 +144,22 @@ if pipeline_ok:
         pipeline.set_model(s["model"])
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 # SIDEBAR
-# ═══════════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown("### 🧠 DocMind")
 
     if is_ready:
-        st.markdown('<span class="badge badge-ready">● READY</span>', unsafe_allow_html=True)
+        st.markdown('<span class="badge badge-ready">● READY</span>',
+                    unsafe_allow_html=True)
     else:
-        st.markdown('<span class="badge badge-empty">○ NO DOCS</span>', unsafe_allow_html=True)
+        st.markdown('<span class="badge badge-empty">○ NO DOCS</span>',
+                    unsafe_allow_html=True)
 
     # ── CHATS ─────────────────────────────────────────────────────────────────
-    st.markdown('<div class="section-label">💬 Chats</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-label">💬 Chats</div>',
+                unsafe_allow_html=True)
 
     if st.button("＋ New Chat", use_container_width=True, key="new_chat_btn"):
         create_chat()
@@ -168,12 +167,10 @@ with st.sidebar:
 
     for cid, chat in list(st.session_state.chats.items()):
         is_active = cid == st.session_state.active_chat
-        active_cls = "chat-item-active" if is_active else ""
         msg_count = len(chat["messages"]) // 2
-
+        label = f"{'▶ ' if is_active else ''}{chat['name']} ({msg_count})"
         col_name, col_del = st.columns([5, 1])
         with col_name:
-            label = f"{'▶ ' if is_active else ''}{chat['name']} ({msg_count})"
             if st.button(label, key=f"chat_{cid}", use_container_width=True):
                 st.session_state.active_chat = cid
                 st.rerun()
@@ -183,7 +180,8 @@ with st.sidebar:
                 st.rerun()
 
     # ── DOCUMENTS ─────────────────────────────────────────────────────────────
-    st.markdown('<div class="section-label">📁 Documents</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-label">📁 Documents</div>',
+                unsafe_allow_html=True)
 
     uploaded = st.file_uploader(
         "Upload files",
@@ -221,13 +219,12 @@ with st.sidebar:
         for src in status_data["sources"]:
             ext = Path(src).suffix.lstrip(".").lower()
             icon = {"pdf": "📕", "docx": "📘", "txt": "📄", "md": "📝"}.get(ext, "📄")
-
             col_chk, col_name, col_del = st.columns([1, 5, 1])
             with col_chk:
                 checked = st.checkbox(
                     "", key=f"doc_{src}",
                     value=src in st.session_state.selected_docs,
-                    label_visibility="collapsed"
+                    label_visibility="collapsed",
                 )
                 if checked:
                     st.session_state.selected_docs.add(src)
@@ -255,7 +252,8 @@ with st.sidebar:
             )
 
     # ── SETTINGS ──────────────────────────────────────────────────────────────
-    st.markdown('<div class="section-label">⚙️ Settings</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-label">⚙️ Settings</div>',
+                unsafe_allow_html=True)
 
     with st.expander("Model & Generation", expanded=False):
         s = st.session_state.settings
@@ -269,54 +267,60 @@ with st.sidebar:
                 "gemini-2.5-pro",
             ],
             index=["gemini-3.1-flash-lite", "gemini-2.5-flash-lite",
-                   "gemini-2.5-flash", "gemini-2.5-pro"].index(s["model"]),
+                   "gemini-2.5-flash", "gemini-2.5-pro"].index(
+                s.get("model", "gemini-3.1-flash-lite")
+            ),
             help="Faster models respond quicker; Pro gives best quality",
         )
-        if new_model != s["model"]:
+        if new_model != s.get("model"):
             s["model"] = new_model
             if pipeline_ok:
                 pipeline.set_model(new_model)
 
         s["temperature"] = st.slider(
-            "Temperature",
-            0.0, 1.0, s["temperature"], 0.05,
+            "Temperature", 0.0, 1.0, s.get("temperature", 0.1), 0.05,
             help="Lower = more factual. Higher = more creative",
         )
         s["max_tokens"] = st.slider(
-            "Max Response Length",
-            256, 2048, s["max_tokens"], 128,
+            "Max Response Length", 256, 2048, s.get("max_tokens", 1024), 128,
             help="Maximum tokens in the response",
         )
 
     with st.expander("Retrieval", expanded=False):
         s = st.session_state.settings
+
         s["top_k"] = st.slider(
-            "Top-K Chunks",
-            1, 15, s["top_k"],
-            help="How many document chunks to retrieve per query",
+            "Top-K Chunks", 1, 15, s.get("top_k", 5),
+            help="Final chunks passed to Gemini after reranking",
         )
         s["score_threshold"] = st.slider(
-            "Min Relevance Score",
-            0.0, 1.0, s["score_threshold"], 0.05,
-            help="Filter out chunks below this relevance score",
+            "Min Relevance Score", 0.0, 1.0, s.get("score_threshold", 0.0), 0.05,
+            help="Filter out chunks below this score",
+        )
+        s["use_hybrid"] = st.toggle(
+            "🔀 Hybrid Search (BM25 + Vector)",
+            value=s.get("use_hybrid", True),
+            help="Combines keyword + semantic search for better recall",
+        )
+        s["use_reranking"] = st.toggle(
+            "🎯 CrossEncoder Reranking",
+            value=s.get("use_reranking", True),
+            help="Reranks retrieved chunks for higher precision",
         )
         st.markdown(
-            f'<div style="font-size:0.75rem;color:#8b949e;">Embedding: '
-            f'<code>{status_data.get("embedding_model", "—").split("/")[-1]}</code></div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            f'<div style="font-size:0.75rem;color:#8b949e;">Vector dim: '
-            f'<code>{status_data.get("embedding_dim", "—")}</code></div>',
+            f'<div style="font-size:0.75rem;color:#8b949e;margin-top:0.4rem;">'
+            f'Embedding: <code>{status_data.get("embedding_model", "—").split("/")[-1]}</code><br>'
+            f'Reranker: <code>{status_data.get("reranker_model", "—").split("/")[-1]}</code><br>'
+            f'Candidates: <code>{status_data.get("candidate_k", 30)}</code>'
+            f' → reranked to <code>{s.get("top_k", 5)}</code>'
+            f'</div>',
             unsafe_allow_html=True,
         )
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 # MAIN AREA
-# ═══════════════════════════════════════════════════════════════════════════════
-
-# Header
+# ══════════════════════════════════════════════════════════════════════════════
 st.markdown(
     '<div class="hero-title">DocMind</div>'
     '<div class="hero-subtitle">Ask anything about your documents. '
@@ -342,7 +346,7 @@ if pipeline_ok and is_ready:
             )
     st.markdown("<br>", unsafe_allow_html=True)
 
-# Active chat name
+# Chat title + rename
 current_chat_name = st.session_state.chats[st.session_state.active_chat]["name"]
 col_title, col_rename = st.columns([4, 1])
 with col_title:
@@ -354,7 +358,7 @@ with col_title:
 with col_rename:
     new_name = st.text_input(
         "Rename", value=current_chat_name,
-        label_visibility="collapsed", key="rename_input"
+        label_visibility="collapsed", key="rename_input",
     )
     if new_name and new_name != current_chat_name:
         st.session_state.chats[st.session_state.active_chat]["name"] = new_name
@@ -396,6 +400,7 @@ with chat_col:
                     f'<div class="resp-time">'
                     f'⏱ {msg.get("elapsed", 0):.2f}s · '
                     f'{msg.get("chunks", 0)} chunks · '
+                    f'{msg.get("method", "vector")} · '
                     f'temp={msg.get("temperature", 0.1)}'
                     f'</div></div>',
                     unsafe_allow_html=True,
@@ -407,6 +412,7 @@ with src_col:
         if msg.get("sources"):
             last_sources = msg["sources"]
             break
+
     if last_sources:
         st.markdown(
             '<div style="font-size:0.75rem;color:#8b949e;font-weight:600;'
@@ -414,21 +420,28 @@ with src_col:
             '📎 Sources</div>',
             unsafe_allow_html=True,
         )
+        # Min-max normalize scores relative to this result set
+        raw_scores = [src["relevance_score"] for src in last_sources]
+        min_s = min(raw_scores)
+        max_s = max(raw_scores)
+        score_range = max_s - min_s
+
         for src in last_sources:
-            score_pct = int(src["relevance_score"] * 100)
+            raw = src["relevance_score"]
+            pct = int((raw - min_s) / score_range * 100) if score_range > 0 else 50
+            clr = score_color(pct)
             st.markdown(
                 f'<div class="source-card">'
                 f'<span class="fname">📄 {src["filename"]}</span>'
-                f'<span class="sc">{score_pct}%</span>'
+                f'<span class="sc" style="color:{clr};">{pct}%</span>'
                 f'<div class="ex">{src["excerpt"]}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
 
-# ── Input form ────────────────────────────────────────────────────────────────
+# ── Input ─────────────────────────────────────────────────────────────────────
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Filter indicator
 if st.session_state.selected_docs:
     docs_str = ", ".join(list(st.session_state.selected_docs)[:2])
     if len(st.session_state.selected_docs) > 2:
@@ -468,6 +481,8 @@ if send and question.strip():
                 temperature=s["temperature"],
                 max_tokens=s["max_tokens"],
                 score_threshold=s["score_threshold"],
+                use_hybrid=s.get("use_hybrid", True),
+                use_reranking=s.get("use_reranking", True),
             )
 
         active_messages().append({
@@ -477,6 +492,7 @@ if send and question.strip():
             "elapsed": result.elapsed_seconds,
             "chunks": result.chunks_retrieved,
             "temperature": s["temperature"],
+            "method": result.retrieval_method,
         })
         st.rerun()
 
