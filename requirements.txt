@@ -8,22 +8,25 @@ faiss-cpu>=1.9.0
 numpy>=1.24.0
 
 # Document Parsing
-pdfplumber==0.11.0
-python-docx==1.1.2
+pdfplumber>=0.11.0
+python-docx>=1.1.2
 
 # Google Gemini
-google-generativeai==0.8.3
+google-generativeai>=0.8.3
 
 # REST API
-fastapi==0.115.0
-uvicorn[standard]==0.30.0
-python-multipart==0.0.12
-pydantic==2.8.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.12
+pydantic>=2.8.0
 
 # Streamlit UI
-streamlit==1.38.0
+streamlit>=1.38.0
+
+# Hybrid Search
+rank-bm25>=0.2.2
 
 # Utilities
-python-dotenv==1.0.1
-tqdm==4.66.5
-loguru==0.7.2
+python-dotenv>=1.0.1
+tqdm>=4.66.5
+loguru>=0.7.2
