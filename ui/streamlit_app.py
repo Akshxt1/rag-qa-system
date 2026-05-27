@@ -262,12 +262,12 @@ with st.sidebar:
             "Gemini Model",
             options=[
                 "gemini-3.1-flash-lite",
-                "gemini-2.5-flash-lite",
+                "gemini-2.5-flash-lite-preview-06-17",
                 "gemini-2.5-flash",
                 "gemini-2.5-pro",
             ],
-            index=["gemini-3.1-flash-lite", "gemini-2.5-flash-lite",
-                   "gemini-2.5-flash", "gemini-2.5-pro"].index(
+            index=["gemini-3.1-flash-lite", "gemini-2.5-flash-lite-preview-06-17",
+                "gemini-2.5-flash", "gemini-2.5-pro"].index(
                 s.get("model", "gemini-3.1-flash-lite")
             ),
             help="Faster models respond quicker; Pro gives best quality",
