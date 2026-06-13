@@ -323,8 +323,18 @@ with st.sidebar:
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown(
     '<div class="hero-title">DocMind</div>'
-    '<div class="hero-subtitle">Ask anything about your documents. '
-    'Answers grounded in your data.</div>',
+    '<div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1.2rem;">'
+    '<span style="background:#1c2845;color:#58a6ff;font-size:0.78rem;font-weight:600;'
+    'padding:0.2rem 0.7rem;border-radius:20px;border:1px solid #58a6ff;'
+    'letter-spacing:0.05em;">RAG-POWERED</span>'
+    '<span style="color:#8b949e;font-size:0.9rem;">Document Intelligence System</span>'
+    '</div>'
+    '<div class="hero-subtitle">'
+    'Upload PDFs, DOCX, or TXT files → Ask questions in plain English → '
+    'Get cited answers grounded in your documents using '
+    '<span style="color:#58a6ff;">HuggingFace Embeddings</span> + '
+    '<span style="color:#bc8cff;">Google Gemini</span>'
+    '</div>',
     unsafe_allow_html=True,
 )
 
