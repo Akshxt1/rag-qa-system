@@ -356,23 +356,12 @@ if pipeline_ok and is_ready:
             )
     st.markdown("<br>", unsafe_allow_html=True)
 
-# Chat title + rename
 current_chat_name = st.session_state.chats[st.session_state.active_chat]["name"]
-col_title, col_rename = st.columns([4, 1])
-with col_title:
-    st.markdown(
-        f'<div style="font-size:1rem;font-weight:600;color:#58a6ff;margin-bottom:0.5rem;">'
-        f'💬 {current_chat_name}</div>',
-        unsafe_allow_html=True,
-    )
-with col_rename:
-    new_name = st.text_input(
-        "Rename", value=current_chat_name,
-        label_visibility="collapsed", key="rename_input",
-    )
-    if new_name and new_name != current_chat_name:
-        st.session_state.chats[st.session_state.active_chat]["name"] = new_name
-        st.rerun()
+st.markdown(
+    f'<div style="font-size:0.95rem;font-weight:600;color:#58a6ff;'
+    f'margin-bottom:0.8rem;">💬 {current_chat_name}</div>',
+    unsafe_allow_html=True,
+)
 
 # Chat + Sources layout
 chat_col, src_col = st.columns([3, 2])
@@ -387,61 +376,46 @@ with chat_col:
                 unsafe_allow_html=True,
             )
         else:
-            st.markdown(
-                '<div style="background:#161b22;border:1px solid #30363d;'
-                'border-radius:12px;padding:2rem 2.5rem;">'
-
-                '<div style="font-size:1.3rem;font-weight:700;color:#e6edf3;margin-bottom:0.5rem;">'
-                '👋 Welcome to DocMind!</div>'
-
-                '<div style="color:#8b949e;font-size:0.9rem;line-height:1.7;margin-bottom:1.2rem;">'
-                'DocMind is an AI-powered document Q&A system. Upload your documents and ask '
-                'questions in plain English — DocMind will find the most relevant passages and '
-                'generate accurate, cited answers using Google Gemini.'
-                '</div>'
-
-                '<div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;'
-                'padding:1rem 1.2rem;margin-bottom:1rem;">'
-                '<div style="color:#58a6ff;font-weight:600;font-size:0.85rem;margin-bottom:0.5rem;">'
-                '📥 What you can upload</div>'
-                '<div style="color:#8b949e;font-size:0.83rem;line-height:1.8;">'
-                '📕 <b style="color:#e6edf3;">PDF</b> — Research papers, reports, books<br>'
-                '📘 <b style="color:#e6edf3;">DOCX</b> — Word documents, notes, manuals<br>'
-                '📄 <b style="color:#e6edf3;">TXT / MD</b> — Plain text, markdown files'
-                '</div></div>'
-
-                '<div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;'
-                'padding:1rem 1.2rem;margin-bottom:1rem;">'
-                '<div style="color:#58a6ff;font-weight:600;font-size:0.85rem;margin-bottom:0.5rem;">'
-                '💬 What you can ask</div>'
-                '<div style="color:#8b949e;font-size:0.83rem;line-height:1.8;">'
-                '→ <i>"What is this document about?"</i><br>'
-                '→ <i>"Summarize chapter 3"</i><br>'
-                '→ <i>"What are the key findings?"</i><br>'
-                '→ <i>"Compare X and Y from the report"</i>'
-                '</div></div>'
-
-                '<div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;'
-                'padding:1rem 1.2rem;margin-bottom:1.2rem;">'
-                '<div style="color:#58a6ff;font-weight:600;font-size:0.85rem;margin-bottom:0.5rem;">'
-                '⚙️ How it works</div>'
-                '<div style="color:#8b949e;font-size:0.83rem;line-height:1.8;">'
-                '<b style="color:#e6edf3;">1. Upload</b> your documents using the sidebar<br>'
-                '<b style="color:#e6edf3;">2. Ingest</b> — DocMind splits and indexes your content<br>'
-                '<b style="color:#e6edf3;">3. Ask</b> — Type any question in the box below<br>'
-                '<b style="color:#e6edf3;">4. Get</b> — Cited answers grounded in your documents'
-                '</div></div>'
-
-                '<div style="background:#1a3a2a;border:1px solid #3fb950;border-radius:8px;'
-                'padding:0.75rem 1.2rem;">'
-                '<div style="color:#3fb950;font-size:0.83rem;">'
-                '🚀 <b>Get started:</b> Upload a PDF, DOCX, or TXT file from the '
-                '<b>Documents</b> section in the left sidebar, then click <b>⚡ Ingest</b>.'
-                '</div></div>'
-
-                '</div>',
-                unsafe_allow_html=True,
-            )
+            st.markdown("""
+<div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:1.5rem 2rem;">
+  <div style="font-size:1.2rem;font-weight:700;color:#e6edf3;margin-bottom:0.8rem;">👋 Welcome to DocMind!</div>
+  <div style="color:#8b949e;font-size:0.87rem;line-height:1.7;margin-bottom:1.2rem;">
+    An AI-powered Q&A system that reads your documents and answers questions with cited sources.
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+    <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:0.9rem;">
+      <div style="color:#58a6ff;font-weight:600;font-size:0.8rem;margin-bottom:0.5rem;">📥 SUPPORTED FILES</div>
+      <div style="color:#8b949e;font-size:0.8rem;line-height:1.8;">
+        📕 PDF — papers, reports, books<br>
+        📘 DOCX — word documents<br>
+        📄 TXT / MD — plain text
+      </div>
+    </div>
+    <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:0.9rem;">
+      <div style="color:#bc8cff;font-weight:600;font-size:0.8rem;margin-bottom:0.5rem;">💬 EXAMPLE QUESTIONS</div>
+      <div style="color:#8b949e;font-size:0.8rem;line-height:1.8;">
+        → What is this document about?<br>
+        → Summarize chapter 3<br>
+        → Compare X and Y
+      </div>
+    </div>
+  </div>
+  <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:0.9rem;margin-bottom:1rem;">
+    <div style="color:#3fb950;font-weight:600;font-size:0.8rem;margin-bottom:0.5rem;">⚙️ HOW IT WORKS</div>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+      <span style="background:#1a3a2a;color:#3fb950;padding:0.25rem 0.6rem;border-radius:20px;font-size:0.75rem;">1. Upload docs</span>
+      <span style="color:#484f58;font-size:0.8rem;padding-top:0.2rem;">→</span>
+      <span style="background:#1a3a2a;color:#3fb950;padding:0.25rem 0.6rem;border-radius:20px;font-size:0.75rem;">2. Click Ingest</span>
+      <span style="color:#484f58;font-size:0.8rem;padding-top:0.2rem;">→</span>
+      <span style="background:#1a3a2a;color:#3fb950;padding:0.25rem 0.6rem;border-radius:20px;font-size:0.75rem;">3. Ask anything</span>
+      <span style="color:#484f58;font-size:0.8rem;padding-top:0.2rem;">→</span>
+      <span style="background:#1a3a2a;color:#3fb950;padding:0.25rem 0.6rem;border-radius:20px;font-size:0.75rem;">4. Get cited answers</span>
+    </div>
+  </div>
+  <div style="background:#1c2845;border:1px solid #58a6ff;border-radius:8px;padding:0.7rem 1rem;">
+    <span style="color:#58a6ff;font-size:0.82rem;">🚀 <b>Get started:</b> Upload a file in the <b>Documents</b> section on the left sidebar, then click <b>⚡ Ingest</b></span>
+  </div>
+</div>""", unsafe_allow_html=True)
     else:
         for msg in msgs:
             if msg["role"] == "user":
@@ -462,99 +436,63 @@ with chat_col:
                 )
 
 with src_col:
-    last_sources = None
-    for msg in reversed(active_messages()):
-        if msg.get("sources"):
-            last_sources = msg["sources"]
-            break
+    if not active_messages() and not is_ready:
+        st.markdown("""
+<div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:1.5rem;">
+  <div style="color:#58a6ff;font-weight:600;font-size:0.8rem;margin-bottom:1rem;">🧠 POWERED BY</div>
+  <div style="display:flex;flex-direction:column;gap:0.6rem;">
+    <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:0.75rem;">
+      <div style="color:#e6edf3;font-size:0.82rem;font-weight:600;">HuggingFace Embeddings</div>
+      <div style="color:#8b949e;font-size:0.75rem;margin-top:0.2rem;">all-MiniLM-L6-v2 · 384-dim vectors</div>
+    </div>
+    <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:0.75rem;">
+      <div style="color:#e6edf3;font-size:0.82rem;font-weight:600;">FAISS Vector Store</div>
+      <div style="color:#8b949e;font-size:0.75rem;margin-top:0.2rem;">IndexFlatIP · cosine similarity</div>
+    </div>
+    <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:0.75rem;">
+      <div style="color:#e6edf3;font-size:0.82rem;font-weight:600;">BM25 + CrossEncoder</div>
+      <div style="color:#8b949e;font-size:0.75rem;margin-top:0.2rem;">Hybrid search · reranking</div>
+    </div>
+    <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:0.75rem;">
+      <div style="color:#e6edf3;font-size:0.82rem;font-weight:600;">Google Gemini</div>
+      <div style="color:#8b949e;font-size:0.75rem;margin-top:0.2rem;">Context-grounded generation</div>
+    </div>
+  </div>
+  <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid #21262d;">
+    <div style="color:#8b949e;font-size:0.75rem;text-align:center;">
+      ⚡ &lt;5s response · 🎯 Source citations · 🔒 Grounded answers
+    </div>
+  </div>
+</div>""", unsafe_allow_html=True)
 
-    if last_sources:
-        st.markdown(
-            '<div style="font-size:0.75rem;color:#8b949e;font-weight:600;'
-            'text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.4rem;">'
-            '📎 Sources</div>',
-            unsafe_allow_html=True,
-        )
-        # Min-max normalize scores relative to this result set
-        raw_scores = [src["relevance_score"] for src in last_sources]
-        min_s = min(raw_scores)
-        max_s = max(raw_scores)
-        score_range = max_s - min_s
+    else:
+        last_sources = None
+        for msg in reversed(active_messages()):
+            if msg.get("sources"):
+                last_sources = msg["sources"]
+                break
 
-        for src in last_sources:
-            raw = src["relevance_score"]
-            pct = int((raw - min_s) / score_range * 100) if score_range > 0 else 50
-            clr = score_color(pct)
+        if last_sources:
             st.markdown(
-                f'<div class="source-card">'
-                f'<span class="fname">📄 {src["filename"]}</span>'
-                f'<span class="sc" style="color:{clr};">{pct}%</span>'
-                f'<div class="ex">{src["excerpt"]}</div>'
-                f'</div>',
+                '<div style="font-size:0.75rem;color:#8b949e;font-weight:600;'
+                'text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.4rem;">'
+                '📎 Sources</div>',
                 unsafe_allow_html=True,
             )
+            raw_scores = [src["relevance_score"] for src in last_sources]
+            min_s = min(raw_scores)
+            max_s = max(raw_scores)
+            score_range = max_s - min_s
 
-# ── Input ─────────────────────────────────────────────────────────────────────
-st.markdown("<br>", unsafe_allow_html=True)
-
-if st.session_state.selected_docs:
-    docs_str = ", ".join(list(st.session_state.selected_docs)[:2])
-    if len(st.session_state.selected_docs) > 2:
-        docs_str += f" +{len(st.session_state.selected_docs) - 2} more"
-    st.markdown(
-        f'<div style="font-size:0.78rem;color:#58a6ff;margin-bottom:0.3rem;">'
-        f'🔍 Querying: {docs_str}</div>',
-        unsafe_allow_html=True,
-    )
-
-with st.form(key="query_form", clear_on_submit=True):
-    col_input, col_btn = st.columns([5, 1])
-    with col_input:
-        question = st.text_input(
-            "Ask",
-            placeholder="What are the key findings? Compare X and Y...",
-            label_visibility="collapsed",
-        )
-    with col_btn:
-        send = st.form_submit_button("Ask →", use_container_width=True)
-
-# ── Handle query ──────────────────────────────────────────────────────────────
-if send and question.strip():
-    if not pipeline_ok or not is_ready:
-        st.warning("⚠️ Please upload and ingest documents first.")
-    else:
-        s = st.session_state.settings
-        filter_srcs = st.session_state.selected_docs if st.session_state.selected_docs else None
-
-        active_messages().append({"role": "user", "content": question})
-
-        with st.spinner("Thinking..."):
-            result = pipeline.query(
-                question,
-                top_k=s["top_k"],
-                filter_sources=filter_srcs,
-                temperature=s["temperature"],
-                max_tokens=s["max_tokens"],
-                score_threshold=s["score_threshold"],
-                use_hybrid=s.get("use_hybrid", True),
-                use_reranking=s.get("use_reranking", True),
-            )
-
-        active_messages().append({
-            "role": "assistant",
-            "content": result.answer,
-            "sources": result.sources,
-            "elapsed": result.elapsed_seconds,
-            "chunks": result.chunks_retrieved,
-            "temperature": s["temperature"],
-            "method": result.retrieval_method,
-        })
-        st.rerun()
-
-# Footer
-st.markdown(
-    '<div style="text-align:center;color:#484f58;font-size:0.72rem;margin-top:2rem;">'
-    'DocMind · HuggingFace Embeddings + Google Gemini · Built with Streamlit'
-    '</div>',
-    unsafe_allow_html=True,
-)
+            for src in last_sources:
+                raw = src["relevance_score"]
+                pct = int((raw - min_s) / score_range * 100) if score_range > 0 else 50
+                clr = score_color(pct)
+                st.markdown(
+                    f'<div class="source-card">'
+                    f'<span class="fname">📄 {src["filename"]}</span>'
+                    f'<span class="sc" style="color:{clr};">{pct}%</span>'
+                    f'<div class="ex">{src["excerpt"]}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
