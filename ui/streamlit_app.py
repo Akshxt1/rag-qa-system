@@ -378,12 +378,57 @@ with chat_col:
             )
         else:
             st.markdown(
-                '<div style="background:#161b22;border:1px dashed #30363d;'
-                'border-radius:10px;padding:2rem;text-align:center;color:#8b949e;">'
-                '<div style="font-size:2rem;">📂</div>'
-                '<div style="font-weight:600;color:#e6edf3;margin-bottom:0.3rem;">'
-                'No documents yet</div>'
-                '<div style="font-size:0.85rem;">Upload files in the sidebar.</div>'
+                '<div style="background:#161b22;border:1px solid #30363d;'
+                'border-radius:12px;padding:2rem 2.5rem;">'
+
+                '<div style="font-size:1.3rem;font-weight:700;color:#e6edf3;margin-bottom:0.5rem;">'
+                '👋 Welcome to DocMind!</div>'
+
+                '<div style="color:#8b949e;font-size:0.9rem;line-height:1.7;margin-bottom:1.2rem;">'
+                'DocMind is an AI-powered document Q&A system. Upload your documents and ask '
+                'questions in plain English — DocMind will find the most relevant passages and '
+                'generate accurate, cited answers using Google Gemini.'
+                '</div>'
+
+                '<div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;'
+                'padding:1rem 1.2rem;margin-bottom:1rem;">'
+                '<div style="color:#58a6ff;font-weight:600;font-size:0.85rem;margin-bottom:0.5rem;">'
+                '📥 What you can upload</div>'
+                '<div style="color:#8b949e;font-size:0.83rem;line-height:1.8;">'
+                '📕 <b style="color:#e6edf3;">PDF</b> — Research papers, reports, books<br>'
+                '📘 <b style="color:#e6edf3;">DOCX</b> — Word documents, notes, manuals<br>'
+                '📄 <b style="color:#e6edf3;">TXT / MD</b> — Plain text, markdown files'
+                '</div></div>'
+
+                '<div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;'
+                'padding:1rem 1.2rem;margin-bottom:1rem;">'
+                '<div style="color:#58a6ff;font-weight:600;font-size:0.85rem;margin-bottom:0.5rem;">'
+                '💬 What you can ask</div>'
+                '<div style="color:#8b949e;font-size:0.83rem;line-height:1.8;">'
+                '→ <i>"What is this document about?"</i><br>'
+                '→ <i>"Summarize chapter 3"</i><br>'
+                '→ <i>"What are the key findings?"</i><br>'
+                '→ <i>"Compare X and Y from the report"</i>'
+                '</div></div>'
+
+                '<div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;'
+                'padding:1rem 1.2rem;margin-bottom:1.2rem;">'
+                '<div style="color:#58a6ff;font-weight:600;font-size:0.85rem;margin-bottom:0.5rem;">'
+                '⚙️ How it works</div>'
+                '<div style="color:#8b949e;font-size:0.83rem;line-height:1.8;">'
+                '<b style="color:#e6edf3;">1. Upload</b> your documents using the sidebar<br>'
+                '<b style="color:#e6edf3;">2. Ingest</b> — DocMind splits and indexes your content<br>'
+                '<b style="color:#e6edf3;">3. Ask</b> — Type any question in the box below<br>'
+                '<b style="color:#e6edf3;">4. Get</b> — Cited answers grounded in your documents'
+                '</div></div>'
+
+                '<div style="background:#1a3a2a;border:1px solid #3fb950;border-radius:8px;'
+                'padding:0.75rem 1.2rem;">'
+                '<div style="color:#3fb950;font-size:0.83rem;">'
+                '🚀 <b>Get started:</b> Upload a PDF, DOCX, or TXT file from the '
+                '<b>Documents</b> section in the left sidebar, then click <b>⚡ Ingest</b>.'
+                '</div></div>'
+
                 '</div>',
                 unsafe_allow_html=True,
             )
