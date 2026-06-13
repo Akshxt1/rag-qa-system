@@ -2,14 +2,30 @@ import sys
 import os
 import uuid
 import math
+import base64
 from datetime import datetime
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-import streamlit as st
 from pathlib import Path
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import streamlit as st
+
+# ── Logo loader ───────────────────────────────────────────────────────────────
+def get_logo_b64():
+    logo_path = Path(__file__).parent / "assets" / "logo.png"
+    if logo_path.exists():
+        with open(logo_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    return None
+
+LOGO_B64 = get_logo_b64()
+LOGO_HTML = (
+    f'<img src="data:image/png;base64,{LOGO_B64}" '
+    f'style="width:36px;height:36px;object-fit:contain;border-radius:8px;" />'
+    if LOGO_B64 else '<span style="font-size:1.8rem;">🧠</span>'
+)
+
 st.set_page_config(
-    page_title="DocMind — RAG Q&A",
+    page_title="IntelliRAG — Document Intelligence",
     page_icon="🧠",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -18,68 +34,223 @@ st.set_page_config(
 STYLE = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-html, body, [class*="css"] { font-family: 'Space Grotesk', sans-serif; }
-.stApp { background: #0d1117; color: #e6edf3; }
-.main .block-container { padding-top: 1rem; padding-bottom: 0.5rem; max-width: 1200px; }
-[data-testid="stSidebar"] { background: #161b22; border-right: 1px solid #30363d; }
-[data-testid="stSidebar"] * { font-size: 0.88rem; }
 
-.hero-wrap { display:flex; align-items:center; gap:1rem; margin-bottom:0.6rem; }
-.hero-title { font-size: 1.8rem; font-weight: 700; margin:0;
-  background: linear-gradient(135deg, #58a6ff 0%, #bc8cff 60%, #ff7b72 100%);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-.hero-tag { background:#1c2845; color:#58a6ff; font-size:0.7rem; font-weight:600;
-  padding:0.18rem 0.6rem; border-radius:20px; border:1px solid #58a6ff;
-  letter-spacing:0.05em; white-space:nowrap; }
-.hero-sub { color:#8b949e; font-size:0.82rem; margin-bottom:0.8rem; }
+*, html, body, [class*="css"] {
+    font-family: 'Space Grotesk', sans-serif;
+}
 
-.badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
-.badge-ready { background: #1a3a2a; color: #3fb950; border: 1px solid #3fb950; }
-.badge-empty { background: #2d1a1a; color: #f85149; border: 1px solid #f85149; }
+/* ── Background ── */
+.stApp {
+    background: #060d1a;
+    background-image:
+        radial-gradient(ellipse at 20% 10%, rgba(99,60,255,0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(0,180,255,0.08) 0%, transparent 50%),
+        linear-gradient(180deg, #060d1a 0%, #080f1e 100%);
+    color: #e2e8f0;
+}
 
-.chat-user { background: #1c2128; border: 1px solid #30363d;
-  border-radius: 12px 12px 4px 12px; padding: 0.65rem 0.9rem; margin: 0.35rem 0; color: #e6edf3; font-size:0.9rem; }
-.chat-assistant { background: #0f1923; border: 1px solid #21262d;
-  border-left: 3px solid #58a6ff; border-radius: 4px 12px 12px 12px;
-  padding: 0.65rem 1rem; margin: 0.35rem 0; color: #e6edf3; line-height: 1.65; font-size:0.9rem; }
-.resp-time { font-size: 0.68rem; color: #8b949e; font-family: 'JetBrains Mono', monospace; margin-top: 0.25rem; }
+.main .block-container {
+    padding-top: 0.8rem;
+    padding-bottom: 0.5rem;
+    max-width: 1280px;
+}
 
-.source-card { background: #161b22; border: 1px solid #30363d;
-  border-radius: 8px; padding: 0.6rem 0.85rem; margin: 0.3rem 0; font-size: 0.8rem; }
-.source-card .fname { color: #58a6ff; font-weight: 600; font-size: 0.76rem; }
-.source-card .sc { float: right; font-weight: 600; font-size: 0.73rem; padding: 0.06rem 0.35rem; border-radius: 10px; }
-.source-card .ex { color: #8b949e; margin-top: 0.3rem; font-size: 0.77rem; line-height: 1.45; }
+/* ── Sidebar ── */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #080f1f 0%, #060d1a 100%);
+    border-right: 1px solid rgba(99,60,255,0.2);
+}
+[data-testid="stSidebar"] * { font-size: 0.87rem; }
 
-.stat-box { background: #161b22; border: 1px solid #30363d;
-  border-radius: 8px; padding: 0.5rem 0.4rem; text-align: center; }
-.stat-num { font-size: 1.2rem; font-weight: 700; color: #58a6ff; }
-.stat-label { font-size: 0.62rem; color: #8b949e; text-transform: uppercase; letter-spacing: 0.07em; }
+/* ── Hero ── */
+.hero-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.3rem;
+}
+.hero-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    background: linear-gradient(135deg, #7b5cf5 0%, #4fc3f7 50%, #00d4b8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+}
+.hero-tag {
+    background: rgba(99,60,255,0.15);
+    color: #7b5cf5;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.2rem 0.65rem;
+    border-radius: 20px;
+    border: 1px solid rgba(99,60,255,0.4);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+}
+.hero-sub {
+    color: #64748b;
+    font-size: 0.8rem;
+    margin-bottom: 0.7rem;
+}
 
-.section-label { color: #8b949e; font-size: 0.7rem; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.08em; margin: 0.8rem 0 0.4rem 0; }
+/* ── Badges ── */
+.badge { display:inline-block; padding:0.2rem 0.65rem; border-radius:20px; font-size:0.71rem; font-weight:600; }
+.badge-ready { background:rgba(0,212,80,0.12); color:#00d450; border:1px solid rgba(0,212,80,0.35); }
+.badge-empty { background:rgba(255,60,60,0.12); color:#ff4444; border:1px solid rgba(255,60,60,0.3); }
 
-.stButton > button { background: #1f6feb; color: white; border: none;
-  border-radius: 6px; font-weight: 600; font-size: 0.85rem; }
-.stButton > button:hover { background: #388bfd; }
-.stTextInput > div > div > input { background: #161b22 !important;
-  border: 1px solid #30363d !important; border-radius: 8px !important; color: #e6edf3 !important; }
+/* ── Stat boxes ── */
+.stat-box {
+    background: linear-gradient(135deg, rgba(13,25,50,0.9), rgba(8,18,38,0.9));
+    border: 1px solid rgba(99,60,255,0.2);
+    border-radius: 10px;
+    padding: 0.55rem 0.5rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+.stat-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #7b5cf5, #4fc3f7, #00d4b8);
+}
+.stat-num { font-size: 1.3rem; font-weight: 700; color: #4fc3f7; line-height: 1.2; }
+.stat-icon { font-size: 1rem; margin-bottom: 0.1rem; }
+.stat-label { font-size: 0.6rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* ── Cards ── */
+.glass-card {
+    background: rgba(13,25,50,0.7);
+    border: 1px solid rgba(99,60,255,0.15);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+/* ── Chat messages ── */
+.chat-user {
+    background: rgba(20,35,70,0.8);
+    border: 1px solid rgba(99,60,255,0.2);
+    border-radius: 14px 14px 4px 14px;
+    padding: 0.7rem 1rem;
+    margin: 0.4rem 0;
+    color: #e2e8f0;
+    font-size: 0.88rem;
+}
+.chat-assistant {
+    background: rgba(8,18,38,0.9);
+    border: 1px solid rgba(79,195,247,0.15);
+    border-left: 3px solid #4fc3f7;
+    border-radius: 4px 14px 14px 14px;
+    padding: 0.7rem 1rem;
+    margin: 0.4rem 0;
+    color: #e2e8f0;
+    line-height: 1.65;
+    font-size: 0.88rem;
+}
+.resp-time {
+    font-size: 0.67rem;
+    color: #475569;
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 0.3rem;
+}
+
+/* ── Source cards ── */
+.source-card {
+    background: rgba(13,25,50,0.7);
+    border: 1px solid rgba(99,60,255,0.15);
+    border-radius: 10px;
+    padding: 0.65rem 0.85rem;
+    margin: 0.35rem 0;
+    transition: border-color 0.2s;
+}
+.source-card:hover { border-color: rgba(79,195,247,0.35); }
+.source-fname { color: #4fc3f7; font-weight: 600; font-size: 0.76rem; }
+.source-page { color: #7b5cf5; font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; }
+.source-score { float:right; font-weight:700; font-size:0.73rem; }
+.source-ex { color: #64748b; margin-top: 0.3rem; font-size: 0.76rem; line-height: 1.5; }
+
+/* ── Doc info card ── */
+.doc-info-card {
+    background: rgba(13,25,50,0.7);
+    border: 1px solid rgba(99,60,255,0.2);
+    border-radius: 10px;
+    padding: 0.7rem 0.9rem;
+    margin: 0.35rem 0;
+}
+
+/* ── Sidebar chat buttons ── */
+.stButton > button {
+    background: rgba(99,60,255,0.15);
+    color: #a78bfa;
+    border: 1px solid rgba(99,60,255,0.25);
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.83rem;
+    transition: all 0.2s;
+}
+.stButton > button:hover {
+    background: rgba(99,60,255,0.3);
+    border-color: rgba(99,60,255,0.5);
+    color: #c4b5fd;
+}
+
+/* ── Input ── */
+.stTextInput > div > div > input {
+    background: rgba(13,25,50,0.8) !important;
+    border: 1px solid rgba(99,60,255,0.25) !important;
+    border-radius: 10px !important;
+    color: #e2e8f0 !important;
+    font-size: 0.9rem !important;
+}
+.stTextInput > div > div > input:focus {
+    border-color: rgba(79,195,247,0.5) !important;
+    box-shadow: 0 0 0 2px rgba(79,195,247,0.1) !important;
+}
+
 div[data-testid="stForm"] { border: none; padding: 0; }
 
-.tech-card { background: #0d1117; border: 1px solid #21262d; border-radius: 8px;
-  padding: 0.55rem 0.75rem; display:flex; justify-content:space-between; align-items:center; }
-.tech-name { color: #e6edf3; font-size: 0.8rem; font-weight: 600; }
-.tech-sub { color: #8b949e; font-size: 0.7rem; }
+/* ── Form submit button ── */
+[data-testid="stForm"] button[kind="primaryFormSubmit"],
+[data-testid="stForm"] button {
+    background: linear-gradient(135deg, #7b5cf5, #4fc3f7) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    font-size: 0.88rem !important;
+}
+
+.section-label {
+    color: #475569;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 0.8rem 0 0.35rem 0;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(99,60,255,0.3); border-radius: 4px; }
 </style>
 """
 st.markdown(STYLE, unsafe_allow_html=True)
 
 
+# ── Pipeline ──────────────────────────────────────────────────────────────────
 @st.cache_resource(show_spinner=False)
 def load_pipeline():
     from app.pipeline.rag import RAGPipeline
     return RAGPipeline()
 
 
+# ── State ─────────────────────────────────────────────────────────────────────
 def init_state():
     if "chats" not in st.session_state:
         cid = str(uuid.uuid4())[:8]
@@ -99,6 +270,8 @@ def init_state():
             "use_hybrid": True,
             "use_reranking": True,
         }
+    if "renaming_chat" not in st.session_state:
+        st.session_state.renaming_chat = None
 
 
 init_state()
@@ -111,7 +284,9 @@ def active_messages():
 def create_chat():
     cid = str(uuid.uuid4())[:8]
     n = len(st.session_state.chats) + 1
-    st.session_state.chats[cid] = {"name": f"Chat {n}", "messages": [], "created_at": datetime.now()}
+    st.session_state.chats[cid] = {
+        "name": f"Chat {n}", "messages": [], "created_at": datetime.now()
+    }
     st.session_state.active_chat = cid
 
 
@@ -124,10 +299,12 @@ def delete_chat(cid):
 
 
 def score_color(pct):
-    return "#3fb950" if pct >= 70 else "#d29922" if pct >= 45 else "#8b949e"
+    if pct >= 70: return "#00d450"
+    if pct >= 45: return "#f59e0b"
+    return "#64748b"
 
 
-# ── Pipeline ──────────────────────────────────────────────────────────────────
+# ── Load pipeline ─────────────────────────────────────────────────────────────
 try:
     pipeline = load_pipeline()
     status_data = pipeline.status()
@@ -150,13 +327,27 @@ if pipeline_ok:
 # SIDEBAR
 # ══════════════════════════════════════════════════════════════════════════════
 with st.sidebar:
-    st.markdown("### 🧠 DocMind")
+    # Logo + name
+    st.markdown(
+        f'<div style="display:flex;align-items:center;gap:0.6rem;padding:0.3rem 0 0.2rem 0;">'
+        f'{LOGO_HTML}'
+        f'<div>'
+        f'<div style="font-size:1.05rem;font-weight:700;background:linear-gradient(135deg,#7b5cf5,#4fc3f7);'
+        f'-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">IntelliRAG</div>'
+        f'<div style="font-size:0.6rem;color:#475569;letter-spacing:0.06em;">DOCUMENT INTELLIGENCE</div>'
+        f'</div></div>',
+        unsafe_allow_html=True)
+
+    st.markdown('<div style="height:0.4rem;"></div>', unsafe_allow_html=True)
+
     if is_ready:
         st.markdown('<span class="badge badge-ready">● READY</span>', unsafe_allow_html=True)
     else:
         st.markdown('<span class="badge badge-empty">○ NO DOCS</span>', unsafe_allow_html=True)
 
+    # ── CHATS ─────────────────────────────────────────────────────────────────
     st.markdown('<div class="section-label">💬 Chats</div>', unsafe_allow_html=True)
+
     if st.button("＋ New Chat", use_container_width=True, key="new_chat_btn"):
         create_chat()
         st.rerun()
@@ -164,23 +355,53 @@ with st.sidebar:
     for cid, chat in list(st.session_state.chats.items()):
         is_active = cid == st.session_state.active_chat
         msg_count = len(chat["messages"]) // 2
-        label = f"{'▶ ' if is_active else ''}{chat['name']} ({msg_count})"
-        col_name, col_del = st.columns([5, 1])
-        with col_name:
-            if st.button(label, key=f"chat_{cid}", use_container_width=True):
-                st.session_state.active_chat = cid
-                st.rerun()
-        with col_del:
-            if st.button("🗑", key=f"del_chat_{cid}"):
-                delete_chat(cid)
-                st.rerun()
 
+        if st.session_state.renaming_chat == cid:
+            # Inline rename
+            new_name = st.text_input(
+                "Chat name", value=chat["name"],
+                key=f"rename_{cid}", label_visibility="collapsed"
+            )
+            col_ok, col_cancel = st.columns(2)
+            with col_ok:
+                if st.button("✓ Save", key=f"save_{cid}", use_container_width=True):
+                    if new_name.strip():
+                        st.session_state.chats[cid]["name"] = new_name.strip()
+                    st.session_state.renaming_chat = None
+                    st.rerun()
+            with col_cancel:
+                if st.button("✕ Cancel", key=f"cancel_{cid}", use_container_width=True):
+                    st.session_state.renaming_chat = None
+                    st.rerun()
+        else:
+            col_btn, col_edit, col_del = st.columns([6, 1, 1])
+            with col_btn:
+                label = f"{'▶ ' if is_active else ''}{chat['name']} ({msg_count})"
+                if st.button(label, key=f"chat_{cid}", use_container_width=True):
+                    st.session_state.active_chat = cid
+                    st.rerun()
+            with col_edit:
+                if st.button("✏", key=f"edit_{cid}", help="Rename"):
+                    st.session_state.renaming_chat = cid
+                    st.rerun()
+            with col_del:
+                if st.button("🗑", key=f"del_{cid}", help="Delete"):
+                    delete_chat(cid)
+                    st.rerun()
+
+    # ── DOCUMENTS ─────────────────────────────────────────────────────────────
     st.markdown('<div class="section-label">📁 Documents</div>', unsafe_allow_html=True)
-    uploaded = st.file_uploader("Upload", type=["pdf", "docx", "txt", "md"],
-                                accept_multiple_files=True, label_visibility="collapsed")
+
+    uploaded = st.file_uploader(
+        "Upload documents",
+        type=["pdf", "docx", "txt", "md"],
+        accept_multiple_files=True,
+        label_visibility="collapsed",
+    )
+
     if uploaded:
-        if st.button("⚡ Ingest", use_container_width=True):
-            with st.spinner("Ingesting..."):
+        if st.button("⚡ Ingest Documents", use_container_width=True):
+            with st.spinner("Processing..."):
                 total_docs, total_chunks, errors = 0, 0, []
                 prog = st.progress(0)
                 for i, f in enumerate(uploaded):
@@ -201,109 +422,132 @@ with st.sidebar:
             for err in errors:
                 st.error(err)
 
+    # Indexed documents
     if is_ready and status_data.get("sources"):
-        st.markdown("**Indexed — select to filter:**")
+        st.markdown(
+            '<div style="font-size:0.72rem;color:#475569;margin-bottom:0.3rem;">'
+            'Select to filter query scope:</div>',
+            unsafe_allow_html=True)
+
         for src in status_data["sources"]:
             ext = Path(src).suffix.lstrip(".").lower()
             icon = {"pdf": "📕", "docx": "📘", "txt": "📄", "md": "📝"}.get(ext, "📄")
-            col_chk, col_name, col_del = st.columns([1, 5, 1])
+
+            col_chk, col_info, col_del = st.columns([1, 6, 1])
             with col_chk:
-                checked = st.checkbox("", key=f"doc_{src}",
-                                      value=src in st.session_state.selected_docs,
-                                      label_visibility="collapsed")
+                checked = st.checkbox(
+                    f"Select {src}",
+                    key=f"doc_{src}",
+                    value=src in st.session_state.selected_docs,
+                    label_visibility="collapsed",
+                )
                 if checked:
                     st.session_state.selected_docs.add(src)
                 else:
                     st.session_state.selected_docs.discard(src)
-            with col_name:
+            with col_info:
+                short = src[:20] + "…" if len(src) > 20 else src
                 st.markdown(
-                    f'<div style="font-size:0.78rem;color:#8b949e;padding-top:0.4rem;">'
-                    f'{icon} {src[:22]}{"…" if len(src) > 22 else ""}</div>',
+                    f'<div style="font-size:0.77rem;color:#94a3b8;padding-top:0.35rem;">'
+                    f'{icon} {short}</div>',
                     unsafe_allow_html=True)
             with col_del:
-                if st.button("✕", key=f"del_doc_{src}"):
-                    with st.spinner(f"Removing..."):
+                if st.button("✕", key=f"del_doc_{src}", help=f"Remove {src}"):
+                    with st.spinner("Removing..."):
                         removed = pipeline.delete_document(src)
                     st.session_state.selected_docs.discard(src)
                     st.success(f"Removed {removed} chunks")
                     st.rerun()
+
         if st.session_state.selected_docs:
             st.markdown(
-                f'<div style="font-size:0.75rem;color:#58a6ff;">🔍 Filtering: '
-                f'{len(st.session_state.selected_docs)} doc(s)</div>',
+                f'<div style="font-size:0.73rem;color:#7b5cf5;margin-top:0.2rem;">'
+                f'🔍 Filtering: {len(st.session_state.selected_docs)} doc(s)</div>',
                 unsafe_allow_html=True)
 
+    # ── SETTINGS ──────────────────────────────────────────────────────────────
     st.markdown('<div class="section-label">⚙️ Settings</div>', unsafe_allow_html=True)
+
     with st.expander("Model & Generation", expanded=False):
         s = st.session_state.settings
         models = ["gemini-2.5-flash", "gemini-2.5-flash-lite-preview-06-17",
                   "gemini-2.5-pro", "gemini-3.1-flash-lite"]
-        new_model = st.selectbox("Gemini Model", options=models,
-                                 index=models.index(s.get("model", "gemini-2.5-flash"))
-                                 if s.get("model", "gemini-2.5-flash") in models else 0)
+        cur = s.get("model", "gemini-2.5-flash")
+        idx = models.index(cur) if cur in models else 0
+        new_model = st.selectbox("Gemini Model", options=models, index=idx)
         if new_model != s.get("model"):
             s["model"] = new_model
             if pipeline_ok:
                 pipeline.set_model(new_model)
-        s["temperature"] = st.slider("Temperature", 0.0, 1.0, s.get("temperature", 0.1), 0.05)
-        s["max_tokens"] = st.slider("Max Response Length", 256, 2048, s.get("max_tokens", 1024), 128)
+        s["temperature"] = st.slider("Temperature", 0.0, 1.0, s.get("temperature", 0.1), 0.05,
+                                     help="Lower = factual, Higher = creative")
+        s["max_tokens"] = st.slider("Max Response Tokens", 256, 2048, s.get("max_tokens", 1024), 128)
 
     with st.expander("Retrieval", expanded=False):
         s = st.session_state.settings
-        s["top_k"] = st.slider("Top-K Chunks", 1, 15, s.get("top_k", 5))
-        s["score_threshold"] = st.slider("Min Relevance Score", 0.0, 1.0, s.get("score_threshold", 0.0), 0.05)
-        s["use_hybrid"] = st.toggle("🔀 Hybrid Search", value=s.get("use_hybrid", True))
+        s["top_k"] = st.slider("Top-K Chunks", 1, 15, s.get("top_k", 5),
+                                help="Chunks passed to Gemini after reranking")
+        s["score_threshold"] = st.slider("Min Relevance", 0.0, 1.0, s.get("score_threshold", 0.0), 0.05)
+        s["use_hybrid"] = st.toggle("🔀 Hybrid BM25 + Vector", value=s.get("use_hybrid", True))
         s["use_reranking"] = st.toggle("🎯 CrossEncoder Reranking", value=s.get("use_reranking", True))
         st.markdown(
-            f'<div style="font-size:0.73rem;color:#8b949e;margin-top:0.3rem;">'
-            f'Embed: <code>{status_data.get("embedding_model","—").split("/")[-1]}</code> · '
-            f'Candidates: <code>{status_data.get("candidate_k",30)}</code>→<code>{s.get("top_k",5)}</code>'
-            f'</div>', unsafe_allow_html=True)
+            f'<div style="font-size:0.71rem;color:#475569;margin-top:0.3rem;">'
+            f'Model: <code>{status_data.get("embedding_model","—").split("/")[-1]}</code> · '
+            f'Candidates: <code>{status_data.get("candidate_k",30)}</code>→'
+            f'<code>{s.get("top_k",5)}</code></div>',
+            unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# MAIN
+# MAIN AREA
 # ══════════════════════════════════════════════════════════════════════════════
 
-# ── Compact hero ──────────────────────────────────────────────────────────────
+# ── Hero ──────────────────────────────────────────────────────────────────────
 st.markdown(
-    '<div class="hero-wrap">'
-    '<span class="hero-title">DocMind</span>'
-    '<span class="hero-tag">RAG-POWERED</span>'
-    '<span style="color:#8b949e;font-size:0.82rem;">Document Intelligence System</span>'
-    '</div>'
-    '<div class="hero-sub">'
-    'Upload docs → Ask in plain English → Get cited answers · '
-    '<span style="color:#58a6ff;">HuggingFace</span> + '
-    '<span style="color:#bc8cff;">Gemini</span>'
-    '</div>',
+    f'<div class="hero-row">'
+    f'{LOGO_HTML}'
+    f'<span class="hero-title">IntelliRAG</span>'
+    f'<span class="hero-tag">RAG-POWERED</span>'
+    f'<span style="color:#475569;font-size:0.8rem;">Intelligent RAG System · Document Intelligence</span>'
+    f'</div>'
+    f'<div class="hero-sub">'
+    f'Upload docs → Ask in plain English → Get cited answers · '
+    f'<span style="color:#7b5cf5;">HuggingFace</span> + '
+    f'<span style="color:#4fc3f7;">Gemini</span>'
+    f'</div>',
     unsafe_allow_html=True)
 
-# ── Stats strip (only when ready) ─────────────────────────────────────────────
+# ── Stats strip ───────────────────────────────────────────────────────────────
 if pipeline_ok and is_ready:
     c1, c2, c3, c4 = st.columns(4)
-    for col, num, label in [
-        (c1, status_data["unique_documents"], "Documents"),
-        (c2, status_data["total_chunks"], "Chunks"),
-        (c3, len(active_messages()) // 2, "Queries"),
-        (c4, status_data["embedding_dim"], "Dim"),
-    ]:
+    stats = [
+        (c1, status_data["unique_documents"], "📄", "Documents"),
+        (c2, status_data["total_chunks"], "🧩", "Chunks"),
+        (c3, len(active_messages()) // 2, "💬", "Queries"),
+        (c4, status_data["embedding_dim"], "🔢", "Vector Dim"),
+    ]
+    for col, num, icon, label in stats:
         with col:
             st.markdown(
-                f'<div class="stat-box"><div class="stat-num">{num}</div>'
-                f'<div class="stat-label">{label}</div></div>',
+                f'<div class="stat-box">'
+                f'<div class="stat-icon">{icon}</div>'
+                f'<div class="stat-num">{num}</div>'
+                f'<div class="stat-label">{label}</div>'
+                f'</div>',
                 unsafe_allow_html=True)
+    st.markdown('<div style="height:0.4rem;"></div>', unsafe_allow_html=True)
 
-st.markdown('<div style="height:0.5rem;"></div>', unsafe_allow_html=True)
-
-# ── Chat name ─────────────────────────────────────────────────────────────────
-current_chat_name = st.session_state.chats[st.session_state.active_chat]["name"]
+# ── Chat title ────────────────────────────────────────────────────────────────
+current_chat = st.session_state.chats[st.session_state.active_chat]
 st.markdown(
-    f'<div style="font-size:0.88rem;font-weight:600;color:#58a6ff;margin-bottom:0.5rem;">'
-    f'💬 {current_chat_name}</div>',
+    f'<div style="font-size:0.88rem;font-weight:600;'
+    f'background:linear-gradient(90deg,#7b5cf5,#4fc3f7);'
+    f'-webkit-background-clip:text;-webkit-text-fill-color:transparent;'
+    f'background-clip:text;margin-bottom:0.5rem;">'
+    f'💬 {current_chat["name"]}</div>',
     unsafe_allow_html=True)
 
-# ── Main layout ───────────────────────────────────────────────────────────────
+# ── Main columns ──────────────────────────────────────────────────────────────
 chat_col, src_col = st.columns([3, 2])
 
 with chat_col:
@@ -311,48 +555,49 @@ with chat_col:
     if not msgs:
         if is_ready:
             st.markdown(
-                '<div style="color:#8b949e;font-size:0.88rem;padding:0.5rem 0;">'
-                '💬 Documents ready — ask a question below.</div>',
+                '<div style="color:#475569;font-size:0.87rem;padding:0.5rem 0;">'
+                '✨ Documents ingested and ready — ask anything below.</div>',
                 unsafe_allow_html=True)
         else:
             st.markdown("""
-<div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:1.2rem 1.5rem;">
-  <div style="font-size:1.05rem;font-weight:700;color:#e6edf3;margin-bottom:0.6rem;">👋 Welcome to DocMind!</div>
-  <div style="color:#8b949e;font-size:0.83rem;line-height:1.65;margin-bottom:0.9rem;">
-    An AI-powered Q&amp;A system — upload documents, ask questions, get cited answers.
+<div class="glass-card" style="padding:1.3rem 1.5rem;">
+  <div style="font-size:1.1rem;font-weight:700;color:#e2e8f0;margin-bottom:0.6rem;">👋 Welcome to IntelliRAG!</div>
+  <div style="color:#64748b;font-size:0.83rem;line-height:1.65;margin-bottom:0.9rem;">
+    An AI-powered document Q&amp;A system. Upload your files and ask questions in plain English —
+    get accurate, cited answers grounded in your documents.
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-bottom:0.7rem;">
-    <div style="background:#0d1117;border:1px solid #21262d;border-radius:7px;padding:0.75rem;">
-      <div style="color:#58a6ff;font-weight:600;font-size:0.75rem;margin-bottom:0.4rem;">📥 SUPPORTED FILES</div>
-      <div style="color:#8b949e;font-size:0.77rem;line-height:1.7;">
+    <div style="background:rgba(8,18,38,0.7);border:1px solid rgba(99,60,255,0.2);border-radius:8px;padding:0.8rem;">
+      <div style="color:#7b5cf5;font-weight:700;font-size:0.72rem;margin-bottom:0.4rem;letter-spacing:0.06em;">📥 SUPPORTED FILES</div>
+      <div style="color:#64748b;font-size:0.78rem;line-height:1.75;">
         📕 PDF — papers, reports, books<br>
         📘 DOCX — word documents<br>
         📄 TXT / MD — plain text
       </div>
     </div>
-    <div style="background:#0d1117;border:1px solid #21262d;border-radius:7px;padding:0.75rem;">
-      <div style="color:#bc8cff;font-weight:600;font-size:0.75rem;margin-bottom:0.4rem;">💬 EXAMPLE QUESTIONS</div>
-      <div style="color:#8b949e;font-size:0.77rem;line-height:1.7;">
+    <div style="background:rgba(8,18,38,0.7);border:1px solid rgba(79,195,247,0.15);border-radius:8px;padding:0.8rem;">
+      <div style="color:#4fc3f7;font-weight:700;font-size:0.72rem;margin-bottom:0.4rem;letter-spacing:0.06em;">💬 EXAMPLE QUERIES</div>
+      <div style="color:#64748b;font-size:0.78rem;line-height:1.75;">
         → What is this document about?<br>
         → Summarize chapter 3<br>
         → Compare X and Y
       </div>
     </div>
   </div>
-  <div style="background:#0d1117;border:1px solid #21262d;border-radius:7px;padding:0.7rem;margin-bottom:0.7rem;">
-    <div style="color:#3fb950;font-weight:600;font-size:0.75rem;margin-bottom:0.4rem;">⚙️ HOW IT WORKS</div>
+  <div style="background:rgba(8,18,38,0.7);border:1px solid rgba(0,212,80,0.15);border-radius:8px;padding:0.7rem;margin-bottom:0.7rem;">
+    <div style="color:#00d450;font-weight:700;font-size:0.72rem;margin-bottom:0.4rem;letter-spacing:0.06em;">⚙️ HOW IT WORKS</div>
     <div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
-      <span style="background:#1a3a2a;color:#3fb950;padding:0.2rem 0.55rem;border-radius:20px;font-size:0.72rem;">1. Upload docs</span>
-      <span style="color:#484f58;font-size:0.75rem;">→</span>
-      <span style="background:#1a3a2a;color:#3fb950;padding:0.2rem 0.55rem;border-radius:20px;font-size:0.72rem;">2. Click Ingest</span>
-      <span style="color:#484f58;font-size:0.75rem;">→</span>
-      <span style="background:#1a3a2a;color:#3fb950;padding:0.2rem 0.55rem;border-radius:20px;font-size:0.72rem;">3. Ask anything</span>
-      <span style="color:#484f58;font-size:0.75rem;">→</span>
-      <span style="background:#1a3a2a;color:#3fb950;padding:0.2rem 0.55rem;border-radius:20px;font-size:0.72rem;">4. Get cited answers</span>
+      <span style="background:rgba(0,212,80,0.12);color:#00d450;padding:0.2rem 0.55rem;border-radius:20px;font-size:0.71rem;border:1px solid rgba(0,212,80,0.25);">1. Upload docs</span>
+      <span style="color:#334155;font-size:0.8rem;">→</span>
+      <span style="background:rgba(0,212,80,0.12);color:#00d450;padding:0.2rem 0.55rem;border-radius:20px;font-size:0.71rem;border:1px solid rgba(0,212,80,0.25);">2. Click Ingest</span>
+      <span style="color:#334155;font-size:0.8rem;">→</span>
+      <span style="background:rgba(0,212,80,0.12);color:#00d450;padding:0.2rem 0.55rem;border-radius:20px;font-size:0.71rem;border:1px solid rgba(0,212,80,0.25);">3. Ask anything</span>
+      <span style="color:#334155;font-size:0.8rem;">→</span>
+      <span style="background:rgba(0,212,80,0.12);color:#00d450;padding:0.2rem 0.55rem;border-radius:20px;font-size:0.71rem;border:1px solid rgba(0,212,80,0.25);">4. Cited answers</span>
     </div>
   </div>
-  <div style="background:#1c2845;border:1px solid #58a6ff;border-radius:7px;padding:0.6rem 0.9rem;">
-    <span style="color:#58a6ff;font-size:0.79rem;">🚀 <b>Get started:</b> Upload a file in the <b>Documents</b> section on the left, then click <b>⚡ Ingest</b></span>
+  <div style="background:rgba(123,92,245,0.1);border:1px solid rgba(123,92,245,0.3);border-radius:8px;padding:0.65rem 0.9rem;">
+    <span style="color:#a78bfa;font-size:0.8rem;">🚀 <b>Get started:</b> Upload a file in the <b>Documents</b> section on the left, then click <b>⚡ Ingest Documents</b></span>
   </div>
 </div>""", unsafe_allow_html=True)
     else:
@@ -372,64 +617,95 @@ with chat_col:
 with src_col:
     msgs = active_messages()
     if not msgs and not is_ready:
-        # Tech stack panel — same height as welcome card
         st.markdown("""
-<div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:1.2rem 1.3rem;">
-  <div style="color:#58a6ff;font-weight:600;font-size:0.75rem;margin-bottom:0.75rem;letter-spacing:0.06em;">🧠 POWERED BY</div>
+<div class="glass-card" style="padding:1.2rem 1.3rem;">
+  <div style="color:#7b5cf5;font-weight:700;font-size:0.72rem;margin-bottom:0.8rem;letter-spacing:0.08em;">🧠 POWERED BY</div>
   <div style="display:flex;flex-direction:column;gap:0.45rem;">
-    <div class="tech-card">
-      <div><div class="tech-name">HuggingFace Embeddings</div>
-      <div class="tech-sub">all-MiniLM-L6-v2 · 384-dim</div></div>
-      <span style="color:#58a6ff;font-size:0.7rem;">embed</span>
+    <div style="background:rgba(8,18,38,0.7);border:1px solid rgba(99,60,255,0.15);border-radius:8px;padding:0.65rem 0.8rem;display:flex;justify-content:space-between;align-items:center;">
+      <div><div style="color:#e2e8f0;font-size:0.8rem;font-weight:600;">HuggingFace Embeddings</div>
+      <div style="color:#475569;font-size:0.7rem;">all-MiniLM-L6-v2 · 384-dim vectors</div></div>
+      <span style="color:#7b5cf5;font-size:0.68rem;font-weight:600;">EMBED</span>
     </div>
-    <div class="tech-card">
-      <div><div class="tech-name">FAISS Vector Store</div>
-      <div class="tech-sub">IndexFlatIP · cosine sim</div></div>
-      <span style="color:#bc8cff;font-size:0.7rem;">store</span>
+    <div style="background:rgba(8,18,38,0.7);border:1px solid rgba(99,60,255,0.15);border-radius:8px;padding:0.65rem 0.8rem;display:flex;justify-content:space-between;align-items:center;">
+      <div><div style="color:#e2e8f0;font-size:0.8rem;font-weight:600;">FAISS Vector Store</div>
+      <div style="color:#475569;font-size:0.7rem;">IndexFlatIP · cosine similarity</div></div>
+      <span style="color:#4fc3f7;font-size:0.68rem;font-weight:600;">STORE</span>
     </div>
-    <div class="tech-card">
-      <div><div class="tech-name">BM25 + CrossEncoder</div>
-      <div class="tech-sub">Hybrid search · reranking</div></div>
-      <span style="color:#3fb950;font-size:0.7rem;">rank</span>
+    <div style="background:rgba(8,18,38,0.7);border:1px solid rgba(99,60,255,0.15);border-radius:8px;padding:0.65rem 0.8rem;display:flex;justify-content:space-between;align-items:center;">
+      <div><div style="color:#e2e8f0;font-size:0.8rem;font-weight:600;">BM25 + CrossEncoder</div>
+      <div style="color:#475569;font-size:0.7rem;">Hybrid search · reranking</div></div>
+      <span style="color:#00d450;font-size:0.68rem;font-weight:600;">RANK</span>
     </div>
-    <div class="tech-card">
-      <div><div class="tech-name">Google Gemini</div>
-      <div class="tech-sub">Context-grounded generation</div></div>
-      <span style="color:#ff7b72;font-size:0.7rem;">generate</span>
+    <div style="background:rgba(8,18,38,0.7);border:1px solid rgba(99,60,255,0.15);border-radius:8px;padding:0.65rem 0.8rem;display:flex;justify-content:space-between;align-items:center;">
+      <div><div style="color:#e2e8f0;font-size:0.8rem;font-weight:600;">Google Gemini</div>
+      <div style="color:#475569;font-size:0.7rem;">Context-grounded generation</div></div>
+      <span style="color:#f59e0b;font-size:0.68rem;font-weight:600;">GENERATE</span>
     </div>
   </div>
-  <div style="margin-top:0.75rem;padding-top:0.65rem;border-top:1px solid #21262d;
-    display:flex;justify-content:space-around;">
-    <span style="color:#8b949e;font-size:0.7rem;">⚡ &lt;5s</span>
-    <span style="color:#8b949e;font-size:0.7rem;">🎯 Citations</span>
-    <span style="color:#8b949e;font-size:0.7rem;">🔒 Grounded</span>
+  <div style="margin-top:0.8rem;padding-top:0.65rem;border-top:1px solid rgba(99,60,255,0.12);display:flex;justify-content:space-around;">
+    <span style="color:#475569;font-size:0.7rem;">⚡ &lt;5s</span>
+    <span style="color:#475569;font-size:0.7rem;">🎯 Page citations</span>
+    <span style="color:#475569;font-size:0.7rem;">🔒 Grounded</span>
   </div>
 </div>""", unsafe_allow_html=True)
 
-    elif msgs:
+    elif msgs and is_ready:
+        # Document info cards
+        if status_data.get("sources"):
+            for src in status_data["sources"]:
+                ext = Path(src).suffix.lstrip(".").lower()
+                icon = {"pdf": "📕", "docx": "📘", "txt": "📄", "md": "📝"}.get(ext, "📄")
+                # Count chunks for this doc
+                doc_chunks = sum(
+                    1 for c in pipeline.vector_store._chunks
+                    if c.get("filename") == src
+                ) if pipeline_ok else "—"
+                doc_pages = next(
+                    (c.get("doc_pages") for c in pipeline.vector_store._chunks
+                     if c.get("filename") == src and c.get("doc_pages")),
+                    None
+                ) if pipeline_ok else None
+                pages_info = f"· {doc_pages} pages" if doc_pages else ""
+                st.markdown(
+                    f'<div class="doc-info-card">'
+                    f'<div style="color:#4fc3f7;font-size:0.77rem;font-weight:600;">{icon} {src[:28]}{"…" if len(src)>28 else ""}</div>'
+                    f'<div style="color:#475569;font-size:0.7rem;margin-top:0.15rem;">'
+                    f'{doc_chunks} chunks indexed{pages_info} · {ext.upper()}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True)
+
+        # Sources from last answer
         last_sources = None
         for msg in reversed(msgs):
             if msg.get("sources"):
                 last_sources = msg["sources"]
                 break
+
         if last_sources:
             st.markdown(
-                '<div style="font-size:0.73rem;color:#8b949e;font-weight:600;'
-                'text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.35rem;">'
-                '📎 Sources</div>',
+                '<div style="font-size:0.71rem;color:#475569;font-weight:700;'
+                'text-transform:uppercase;letter-spacing:0.08em;margin:0.6rem 0 0.35rem 0;">'
+                '📎 Source Citations</div>',
                 unsafe_allow_html=True)
+
             raw_scores = [s["relevance_score"] for s in last_sources]
             min_s, max_s = min(raw_scores), max(raw_scores)
             score_range = max_s - min_s
+
             for src in last_sources:
                 raw = src["relevance_score"]
                 pct = int((raw - min_s) / score_range * 100) if score_range > 0 else 50
                 clr = score_color(pct)
+                page_ref = src.get("page_ref", "")
+                page_html = (f'<span class="source-page"> · {page_ref}</span>'
+                             if page_ref else "")
                 st.markdown(
                     f'<div class="source-card">'
-                    f'<span class="fname">📄 {src["filename"]}</span>'
-                    f'<span class="sc" style="color:{clr};">{pct}%</span>'
-                    f'<div class="ex">{src["excerpt"]}</div></div>',
+                    f'<span class="source-fname">📄 {src["filename"]}</span>'
+                    f'{page_html}'
+                    f'<span class="source-score" style="color:{clr};">{pct}%</span>'
+                    f'<div class="source-ex">{src["excerpt"]}</div>'
+                    f'</div>',
                     unsafe_allow_html=True)
 
 # ── Input ─────────────────────────────────────────────────────────────────────
@@ -438,18 +714,22 @@ if st.session_state.selected_docs:
     if len(st.session_state.selected_docs) > 2:
         docs_str += f" +{len(st.session_state.selected_docs)-2} more"
     st.markdown(
-        f'<div style="font-size:0.76rem;color:#58a6ff;margin-bottom:0.2rem;">'
+        f'<div style="font-size:0.74rem;color:#7b5cf5;margin-bottom:0.2rem;">'
         f'🔍 Querying: {docs_str}</div>',
         unsafe_allow_html=True)
 
 with st.form(key="query_form", clear_on_submit=True):
     col_input, col_btn = st.columns([5, 1])
     with col_input:
-        question = st.text_input("Ask", placeholder="Ask anything about your documents...",
-                                 label_visibility="collapsed")
+        question = st.text_input(
+            "Ask a question",
+            placeholder="Ask anything about your documents...",
+            label_visibility="collapsed",
+        )
     with col_btn:
         send = st.form_submit_button("Ask →", use_container_width=True)
 
+# ── Handle query ──────────────────────────────────────────────────────────────
 if send and question.strip():
     if not pipeline_ok or not is_ready:
         st.warning("⚠️ Please upload and ingest documents first.")
@@ -459,21 +739,42 @@ if send and question.strip():
         active_messages().append({"role": "user", "content": question})
         with st.spinner("Thinking..."):
             result = pipeline.query(
-                question, top_k=s["top_k"], filter_sources=filter_srcs,
-                temperature=s["temperature"], max_tokens=s["max_tokens"],
+                question,
+                top_k=s["top_k"],
+                filter_sources=filter_srcs,
+                temperature=s["temperature"],
+                max_tokens=s["max_tokens"],
                 score_threshold=s["score_threshold"],
                 use_hybrid=s.get("use_hybrid", True),
                 use_reranking=s.get("use_reranking", True),
             )
+
+        # Attach page_ref to sources
+        sources_with_pages = []
+        for src in result.sources:
+            chunk_match = next(
+                (c for c in pipeline.vector_store._chunks
+                 if c.get("filename") == src["filename"]
+                 and c.get("chunk_idx") == src["chunk_idx"]),
+                None
+            )
+            src["page_ref"] = chunk_match.get("page_ref") if chunk_match else None
+            sources_with_pages.append(src)
+
         active_messages().append({
-            "role": "assistant", "content": result.answer,
-            "sources": result.sources, "elapsed": result.elapsed_seconds,
-            "chunks": result.chunks_retrieved, "temperature": s["temperature"],
+            "role": "assistant",
+            "content": result.answer,
+            "sources": sources_with_pages,
+            "elapsed": result.elapsed_seconds,
+            "chunks": result.chunks_retrieved,
+            "temperature": s["temperature"],
             "method": result.retrieval_method,
         })
         st.rerun()
 
+# ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown(
-    '<div style="text-align:center;color:#484f58;font-size:0.68rem;margin-top:0.5rem;">'
-    'DocMind · HuggingFace + FAISS + BM25 + CrossEncoder + Google Gemini · Streamlit'
-    '</div>', unsafe_allow_html=True)
+    '<div style="text-align:center;color:#1e293b;font-size:0.67rem;margin-top:0.4rem;">'
+    'IntelliRAG · HuggingFace + FAISS + BM25 + CrossEncoder + Google Gemini · Streamlit'
+    '</div>',
+    unsafe_allow_html=True)

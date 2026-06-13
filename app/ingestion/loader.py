@@ -37,13 +37,19 @@ class DocumentLoader:
         if pdfplumber is None:
             raise ImportError("pdfplumber not installed.")
         pages_text = []
+        page_count = 0
         with pdfplumber.open(path) as pdf:
-            for page in pdf.pages:
-                text = page.extract_text()
-                if text:
-                    pages_text.append(text.strip())
             page_count = len(pdf.pages)
-        return self._make_doc("\n\n".join(pages_text), path, "pdf", page_count)
+            for i, page in enumerate(pdf.pages, 1):
+                text = page.extract_text()
+                if text and text.strip():
+                    # Embed page marker so chunker can track it
+                    pages_text.append(f"[PAGE {i}]\n{text.strip()}")
+
+        full_text = "\n\n".join(pages_text)
+        doc = self._make_doc(full_text, path, "pdf", page_count)
+        doc["page_count"] = page_count
+        return doc
 
     def _load_docx(self, path: Path) -> Dict:
         if DocxDocument is None:

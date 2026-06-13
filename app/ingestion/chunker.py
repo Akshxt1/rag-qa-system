@@ -11,6 +11,7 @@ class TextChunker:
         self.chunk_overlap = chunk_overlap
 
     def chunk_document(self, doc: Dict) -> List[Dict]:
+        import re
         text = doc.get("text", "").strip()
         if not text:
             return []
@@ -20,14 +21,32 @@ class TextChunker:
 
         chunks = []
         for idx, chunk_text in enumerate(raw_chunks):
+            # Extract page numbers from markers
+            page_nums = re.findall(r'\[PAGE (\d+)\]', chunk_text)
+            page_nums = sorted(set(int(p) for p in page_nums))
+
+            # Clean page markers from displayed text
+            clean_text = re.sub(r'\[PAGE \d+\]\n?', '', chunk_text).strip()
+
+            if page_nums:
+                page_ref = (
+                    f"p.{page_nums[0]}" if len(page_nums) == 1
+                    else f"pp.{page_nums[0]}-{page_nums[-1]}"
+                )
+            else:
+                page_ref = None
+
             chunks.append({
-                "text": chunk_text,
+                "text": clean_text,
                 "source": doc["source"],
                 "filename": doc.get("filename", doc["source"]),
                 "doc_type": doc.get("doc_type", "unknown"),
+                "doc_pages": doc.get("page_count"),
                 "chunk_idx": idx,
                 "total_chunks": len(raw_chunks),
-                "word_count": len(chunk_text.split()),
+                "word_count": len(clean_text.split()),
+                "page_numbers": page_nums,
+                "page_ref": page_ref,
             })
         return chunks
 

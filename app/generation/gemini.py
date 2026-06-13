@@ -99,10 +99,10 @@ class GeminiGenerator:
         parts = []
         for i, (chunk, score) in enumerate(chunks, start=1):
             source_name = chunk.get("filename", chunk.get("source", "unknown"))
-            chunk_idx = chunk.get("chunk_idx", 0)
-            total = chunk.get("total_chunks", "?")
+            page_ref = chunk.get("page_ref", "")
+            page_info = f", {page_ref}" if page_ref else ""
             parts.append(
-                f"[Source {i}: {source_name} (chunk {chunk_idx + 1}/{total}, "
-                f"relevance={score:.3f})]\n{chunk['text']}"
+                f"[Source {i}: {source_name}{page_info} "
+                f"(relevance={score:.3f})]\n{chunk['text']}"
             )
         return "\n\n---\n\n".join(parts)
