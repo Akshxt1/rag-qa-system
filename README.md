@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![IntelliRAG Banner](ui/assets/logo.png)
+![IntelliRAG Banner](ui/assets/Logo.png)
 
 **An end-to-end Retrieval-Augmented Generation system for intelligent document Q&A**
 
@@ -13,7 +13,7 @@
 [![FAISS](https://img.shields.io/badge/FAISS-Vector_Store-orange?style=flat-square)](https://github.com/facebookresearch/faiss)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
-[Live Demo](https://intellirag.streamlit.app) · [Report Bug](https://github.com/Akshxt1/rag-qa-system/issues) · [Request Feature](https://github.com/Akshxt1/rag-qa-system/issues)
+[Report Bug](https://github.com/Akshxt1/rag-qa-system/issues) · [Request Feature](https://github.com/Akshxt1/rag-qa-system/issues)
 
 </div>
 
@@ -21,7 +21,7 @@
 
 ## 📌 Overview
 
-**IntelliRAG** is a production-grade Retrieval-Augmented Generation (RAG) pipeline that lets you upload any document — PDF, DOCX, or TXT — and ask questions in plain English. Answers are grounded in your documents with page-level citations, eliminating hallucinations.
+**IntelliRAG** is a production-grade Retrieval-Augmented Generation (RAG) pipeline that lets you upload any document — PDF, DOCX, or TXT — and ask questions in plain English. Answers are grounded in your documents with **page-level citations**, eliminating hallucinations.
 
 Built as a portfolio project demonstrating end-to-end ML engineering: from document parsing and vector indexing to hybrid retrieval, neural reranking, and LLM-based generation.
 
@@ -31,15 +31,15 @@ Built as a portfolio project demonstrating end-to-end ML engineering: from docum
 
 | Feature | Description |
 |---|---|
-| 📄 **Multi-format ingestion** | PDF (with page tracking), DOCX (tables included), TXT, MD |
+| 📄 **Multi-format ingestion** | PDF (per-page extraction + artifact cleaning), DOCX (tables included), TXT, MD |
+| 📍 **Page Citations** | Answers cite exact page numbers (e.g. `p.3`, `pp.4-5`) tracked through chunking |
 | 🔍 **Hybrid Search** | FAISS vector search + BM25 keyword search fused via Reciprocal Rank Fusion |
 | 🎯 **CrossEncoder Reranking** | ms-marco MiniLM reranker for precision retrieval |
-| 📍 **Page Citations** | Answers cite exact page numbers from source documents |
-| 💬 **Chat History** | Multiple named chat sessions with inline renaming |
-| 📁 **Document Filtering** | Query across all docs or filter to specific ones |
-| ⚙️ **Configurable** | Tune model, temperature, top-k, hybrid/reranking toggles |
+| 💬 **Chat History** | Multiple named chat sessions with inline renaming and deletion |
+| 📁 **Document Filtering** | Query across all docs or pin to specific ones per question |
+| ⚙️ **Configurable** | Tune model, temperature, top-k, hybrid/reranking toggles via sidebar |
 | 🚀 **REST API** | FastAPI endpoints for `/ingest`, `/query`, `/health`, `/stats` |
-| 🌐 **Streamlit UI** | Dark-themed responsive chat interface |
+| 🌐 **Dark UI** | Space Grotesk-themed Streamlit chat interface with collapsible sidebar |
 
 ---
 
@@ -52,7 +52,8 @@ Built as a portfolio project demonstrating end-to-end ML engineering: from docum
   Documents             │  ┌──────────┐    ┌───────────────────┐  │
   PDF/DOCX/TXT  ──────► │  │  Loader  │──► │  Text Chunker     │  │
                         │  │ +page no.│    │  (sentence-aware   │  │
-                        │  └──────────┘    │   + overlap)       │  │
+                        │  │ +cleanup │    │   + overlap +      │  │
+                        │  └──────────┘    │   page inheritance)│  │
                         │                 └────────┬──────────┘  │
                         │                          │              │
                         │                          ▼              │
@@ -116,11 +117,11 @@ This multi-stage approach significantly reduces hallucination vs. direct prompti
 ## 📁 Project Structure
 
 ```
-intellirag/
+rag-qa-system/
 ├── app/
 │   ├── ingestion/
-│   │   ├── loader.py          # PDF/DOCX/TXT loader with page tracking
-│   │   └── chunker.py         # Sentence-aware chunker with page metadata
+│   │   ├── loader.py          # PDF/DOCX/TXT loader with per-page extraction & artifact cleaning
+│   │   └── chunker.py         # Sentence-aware chunker with page number inheritance
 │   ├── embeddings/
 │   │   └── embedder.py        # HuggingFace sentence-transformers wrapper
 │   ├── vectorstore/
@@ -138,10 +139,10 @@ intellirag/
 ├── ui/
 │   ├── streamlit_app.py       # Streamlit chat UI
 │   └── assets/
-│       └── logo.png           # IntelliRAG logo
+│       └── Logo.png           # IntelliRAG logo
+├── .streamlit/
+│   └── config.toml            # Streamlit server config (file watcher tuning)
 ├── config.py                  # Environment config
-├── requirements.txt
-├── runtime.txt                # Python 3.11 pin
 ├── pyproject.toml
 └── .env.example
 ```
@@ -160,12 +161,18 @@ intellirag/
 git clone https://github.com/Akshxt1/rag-qa-system.git
 cd rag-qa-system
 
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# macOS/Linux:
+source .venv/bin/activate
 
-pip install -r requirements.txt
-# or with uv (faster):
-uv pip install -r requirements.txt
+# Install with uv (recommended):
+pip install uv
+uv pip install -e .
+
+# Or with plain pip:
+pip install -e .
 ```
 
 ### 2. Configure environment
@@ -201,8 +208,6 @@ streamlit run ui/streamlit_app.py
 
 **REST API:**
 ```bash
-python -m api.routes
-# or
 uvicorn api.routes:app --reload --port 8000
 ```
 → API docs at http://localhost:8000/docs
@@ -241,10 +246,10 @@ curl http://localhost:8000/stats
 | **Fusion** | Reciprocal Rank Fusion (RRF, k=60) |
 | **Reranker** | `cross-encoder/ms-marco-MiniLM-L-6-v2` |
 | **Generator** | Google Gemini (via `google-genai` SDK) |
-| **PDF Parsing** | `pdfplumber` with per-page text extraction |
+| **PDF Parsing** | `pdfplumber` — per-page extraction with doubled-char artifact cleaning |
 | **DOCX Parsing** | `python-docx` including table extraction |
 | **API** | FastAPI + Uvicorn |
-| **UI** | Streamlit |
+| **UI** | Streamlit (Space Grotesk theme, collapsible sidebar, floating toggle) |
 
 ---
 
@@ -310,3 +315,5 @@ MIT License — see [LICENSE](LICENSE) for details.
 Built with ❤️ using HuggingFace · FAISS · BM25 · CrossEncoder · Google Gemini · Streamlit
 
 **[⭐ Star this repo](https://github.com/Akshxt1/rag-qa-system)** if you found it useful!
+
+</div>
