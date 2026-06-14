@@ -41,15 +41,32 @@ class DocumentLoader:
         with pdfplumber.open(path) as pdf:
             page_count = len(pdf.pages)
             for i, page in enumerate(pdf.pages, 1):
-                text = page.extract_text()
+                text = page.extract_text(x_tolerance=3, y_tolerance=3)
+                if not text or not text.strip():
+                    text = page.extract_text(x_tolerance=7, y_tolerance=7)
                 if text and text.strip():
-                    # Embed page marker so chunker can track it
-                    pages_text.append(f"[PAGE {i}]\n{text.strip()}")
+                    cleaned = self._clean_pdf_text(text.strip())
+                    pages_text.append(f"[PAGE {i}]\n{cleaned}")
 
         full_text = "\n\n".join(pages_text)
         doc = self._make_doc(full_text, path, "pdf", page_count)
         doc["page_count"] = page_count
         return doc
+
+    @staticmethod
+    def _clean_pdf_text(text: str) -> str:
+        import re
+        words = text.split()
+        if not words:
+            return text
+        short_ratio = sum(1 for w in words if len(w) <= 2) / len(words)
+        if short_ratio < 0.45:
+            return text
+        # Fix doubled-char artifact: "r rr" → "r", "aa aaa" → "aa"
+        text = re.sub(r'\b(\w{1,4})\s+\1{1,3}\b', r'\1', text)
+        # Collapse multiple spaces
+        text = re.sub(r'  +', ' ', text)
+        return text.strip()
 
     def _load_docx(self, path: Path) -> Dict:
         if DocxDocument is None:

@@ -1,5 +1,6 @@
 import sys
 import os
+import io
 import uuid
 import math
 import base64
@@ -11,22 +12,36 @@ import streamlit as st
 
 # ── Logo loader ───────────────────────────────────────────────────────────────
 def get_logo_b64():
-    logo_path = Path(__file__).parent / "assets" / "logo.png"
-    if logo_path.exists():
-        with open(logo_path, "rb") as f:
-            return base64.b64encode(f.read()).decode()
-    return None
+    for name in ("Logo.png", "logo.png"):
+        logo_path = Path(__file__).parent / "assets" / name
+        if logo_path.exists():
+            try:
+                from PIL import Image
+                import numpy as np
+                img = Image.open(logo_path).convert("RGBA")
+                arr = np.array(img)
+                white = (arr[:, :, 0] > 220) & (arr[:, :, 1] > 220) & (arr[:, :, 2] > 220)
+                arr[white, 3] = 0
+                img = Image.fromarray(arr, "RGBA")
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                return base64.b64encode(buf.getvalue()).decode(), img
+            except Exception:
+                with open(logo_path, "rb") as f:
+                    return base64.b64encode(f.read()).decode(), None
+    return None, None
 
-LOGO_B64 = get_logo_b64()
+LOGO_B64, LOGO_PIL = get_logo_b64()
 LOGO_HTML = (
     f'<img src="data:image/png;base64,{LOGO_B64}" '
-    f'style="width:36px;height:36px;object-fit:contain;border-radius:8px;" />'
+    f'style="width:36px;height:36px;object-fit:contain;" />'
     if LOGO_B64 else '<span style="font-size:1.8rem;">🧠</span>'
 )
 
+_page_icon = LOGO_PIL if LOGO_PIL else "🧠"
 st.set_page_config(
     page_title="IntelliRAG — Document Intelligence",
-    page_icon="🧠",
+    page_icon=_page_icon,
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -36,7 +51,7 @@ STYLE = """
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 *, html, body, [class*="css"] {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Space Grotesk', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
 }
 
 /* ── Background ── */
@@ -53,6 +68,38 @@ STYLE = """
     padding-top: 0.8rem;
     padding-bottom: 0.5rem;
     max-width: 1280px;
+}
+
+/* ── Equal-height columns ── */
+.main [data-testid="stHorizontalBlock"] {
+    align-items: stretch !important;
+    gap: 1rem !important;
+}
+.main [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+    display: flex !important;
+    flex-direction: column !important;
+}
+.main [data-testid="stHorizontalBlock"] > [data-testid="column"] > div,
+.main [data-testid="stHorizontalBlock"] > [data-testid="column"] > div > div {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+.main [data-testid="stHorizontalBlock"] > [data-testid="column"] [data-testid="stMarkdownContainer"] {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+.glass-card {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+}
+
+/* ── Gap between cards and input form ── */
+div[data-testid="stForm"] {
+    margin-top: 1.5rem !important;
 }
 
 /* ── Sidebar ── */
@@ -227,7 +274,7 @@ div[data-testid="stForm"] { border: none; padding: 0; }
 
 .section-label {
     color: #475569;
-    font-size: 0.68rem;
+    font-size: 0.78rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.1em;
@@ -238,9 +285,65 @@ div[data-testid="stForm"] { border: none; padding: 0; }
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(99,60,255,0.3); border-radius: 4px; }
+
+/* ── Hide Streamlit chrome ── */
+#MainMenu { display: none !important; }
+footer { display: none !important; }
+[data-testid="stBottomBlockContainer"] { display: none !important; }
+[data-testid="stToolbar"] { display: none !important; }
+[data-testid="stDecoration"] { display: none !important; }
+[data-testid="stStatusWidget"] { display: none !important; }
+header[data-testid="stHeader"] {
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
 </style>
 """
 st.markdown(STYLE, unsafe_allow_html=True)
+
+# ── Sidebar toggle fix ────────────────────────────────────────────────────────
+# CSS cannot fix this: the collapse button lives inside the sidebar container,
+# so when Streamlit sets width:0/overflow:hidden on it, the button is trapped.
+# JS injection via iframe (same-origin) appends an independent floating button
+# to document.body — completely outside all Streamlit containers.
+import streamlit.components.v1 as _components
+_components.html("""
+<script>
+(function() {
+    var doc = window.parent.document;
+
+    function getOrCreate() {
+        var b = doc.getElementById('__ir_sidebar_btn__');
+        if (b) return b;
+        b = doc.createElement('button');
+        b.id = '__ir_sidebar_btn__';
+        b.title = 'Open sidebar';
+        b.innerHTML = '&#x276F;';
+        b.style.cssText = 'position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:999999;background:rgba(13,25,50,0.97);border:1px solid rgba(99,60,255,0.45);border-left:none;border-radius:0 8px 8px 0;width:26px;height:52px;cursor:pointer;color:#a78bfa;font-size:1.2rem;display:none;align-items:center;justify-content:center;padding:0;font-family:sans-serif;box-shadow:3px 0 12px rgba(99,60,255,0.25);';
+        b.onmouseenter = function(){ b.style.background='rgba(99,60,255,0.3)'; };
+        b.onmouseleave = function(){ b.style.background='rgba(13,25,50,0.97)'; };
+        b.onclick = function() {
+            var inner = doc.querySelector('[data-testid="stSidebarCollapseButton"] button');
+            if (inner) inner.click();
+        };
+        doc.body.appendChild(b);
+        return b;
+    }
+
+    function tick() {
+        var btn = getOrCreate();
+        var sidebar = doc.querySelector('[data-testid="stSidebar"]');
+        var isCollapsed = !sidebar ||
+            sidebar.getAttribute('aria-expanded') === 'false' ||
+            doc.querySelector('[data-testid*="SidebarCollapsed"]') !== null;
+        btn.style.display = isCollapsed ? 'flex' : 'none';
+    }
+
+    setInterval(tick, 250);
+})();
+</script>
+""", height=0)
 
 
 # ── Pipeline ──────────────────────────────────────────────────────────────────
@@ -374,18 +477,18 @@ with st.sidebar:
                     st.session_state.renaming_chat = None
                     st.rerun()
         else:
-            col_btn, col_edit, col_del = st.columns([6, 1, 1])
+            col_btn, col_edit, col_del = st.columns([6, 1, 1], vertical_alignment="center")
             with col_btn:
                 label = f"{'▶ ' if is_active else ''}{chat['name']} ({msg_count})"
                 if st.button(label, key=f"chat_{cid}", use_container_width=True):
                     st.session_state.active_chat = cid
                     st.rerun()
             with col_edit:
-                if st.button("✏", key=f"edit_{cid}", help="Rename"):
+                if st.button("✎", key=f"edit_{cid}", help="Rename"):
                     st.session_state.renaming_chat = cid
                     st.rerun()
             with col_del:
-                if st.button("🗑", key=f"del_{cid}", help="Delete"):
+                if st.button("✕", key=f"del_{cid}", help="Delete"):
                     delete_chat(cid)
                     st.rerun()
 
@@ -432,25 +535,20 @@ with st.sidebar:
         for src in status_data["sources"]:
             ext = Path(src).suffix.lstrip(".").lower()
             icon = {"pdf": "📕", "docx": "📘", "txt": "📄", "md": "📝"}.get(ext, "📄")
+            short = src[:18] + "…" if len(src) > 18 else src
+            checked_val = src in st.session_state.selected_docs
 
-            col_chk, col_info, col_del = st.columns([1, 6, 1])
+            col_chk, col_del = st.columns([8, 1], vertical_alignment="center")
             with col_chk:
                 checked = st.checkbox(
-                    f"Select {src}",
+                    f"{icon} {short}",
                     key=f"doc_{src}",
-                    value=src in st.session_state.selected_docs,
-                    label_visibility="collapsed",
+                    value=checked_val,
                 )
                 if checked:
                     st.session_state.selected_docs.add(src)
                 else:
                     st.session_state.selected_docs.discard(src)
-            with col_info:
-                short = src[:20] + "…" if len(src) > 20 else src
-                st.markdown(
-                    f'<div style="font-size:0.77rem;color:#94a3b8;padding-top:0.35rem;">'
-                    f'{icon} {short}</div>',
-                    unsafe_allow_html=True)
             with col_del:
                 if st.button("✕", key=f"del_doc_{src}", help=f"Remove {src}"):
                     with st.spinner("Removing..."):
@@ -548,7 +646,7 @@ st.markdown(
     unsafe_allow_html=True)
 
 # ── Main columns ──────────────────────────────────────────────────────────────
-chat_col, src_col = st.columns([3, 2])
+chat_col, src_col = st.columns([1, 1])
 
 with chat_col:
     msgs = active_messages()
@@ -586,14 +684,14 @@ with chat_col:
   </div>
   <div style="background:rgba(8,18,38,0.7);border:1px solid rgba(0,212,80,0.15);border-radius:8px;padding:0.7rem;margin-bottom:0.7rem;">
     <div style="color:#00d450;font-weight:700;font-size:0.72rem;margin-bottom:0.4rem;letter-spacing:0.06em;">⚙️ HOW IT WORKS</div>
-    <div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
-      <span style="background:rgba(0,212,80,0.12);color:#00d450;padding:0.2rem 0.55rem;border-radius:20px;font-size:0.71rem;border:1px solid rgba(0,212,80,0.25);">1. Upload docs</span>
-      <span style="color:#334155;font-size:0.8rem;">→</span>
-      <span style="background:rgba(0,212,80,0.12);color:#00d450;padding:0.2rem 0.55rem;border-radius:20px;font-size:0.71rem;border:1px solid rgba(0,212,80,0.25);">2. Click Ingest</span>
-      <span style="color:#334155;font-size:0.8rem;">→</span>
-      <span style="background:rgba(0,212,80,0.12);color:#00d450;padding:0.2rem 0.55rem;border-radius:20px;font-size:0.71rem;border:1px solid rgba(0,212,80,0.25);">3. Ask anything</span>
-      <span style="color:#334155;font-size:0.8rem;">→</span>
-      <span style="background:rgba(0,212,80,0.12);color:#00d450;padding:0.2rem 0.55rem;border-radius:20px;font-size:0.71rem;border:1px solid rgba(0,212,80,0.25);">4. Cited answers</span>
+    <div style="display:flex;align-items:center;gap:0.3rem;flex-wrap:nowrap;">
+      <span style="background:rgba(0,212,80,0.12);color:#00d450;padding:0.18rem 0.45rem;border-radius:20px;font-size:0.67rem;border:1px solid rgba(0,212,80,0.25);white-space:nowrap;">1. Upload</span>
+      <span style="color:#334155;font-size:0.75rem;">→</span>
+      <span style="background:rgba(0,212,80,0.12);color:#00d450;padding:0.18rem 0.45rem;border-radius:20px;font-size:0.67rem;border:1px solid rgba(0,212,80,0.25);white-space:nowrap;">2. Ingest</span>
+      <span style="color:#334155;font-size:0.75rem;">→</span>
+      <span style="background:rgba(0,212,80,0.12);color:#00d450;padding:0.18rem 0.45rem;border-radius:20px;font-size:0.67rem;border:1px solid rgba(0,212,80,0.25);white-space:nowrap;">3. Ask</span>
+      <span style="color:#334155;font-size:0.75rem;">→</span>
+      <span style="background:rgba(0,212,80,0.12);color:#00d450;padding:0.18rem 0.45rem;border-radius:20px;font-size:0.67rem;border:1px solid rgba(0,212,80,0.25);white-space:nowrap;">4. Cited answers</span>
     </div>
   </div>
   <div style="background:rgba(123,92,245,0.1);border:1px solid rgba(123,92,245,0.3);border-radius:8px;padding:0.65rem 0.9rem;">
@@ -618,28 +716,30 @@ with src_col:
     msgs = active_messages()
     if not msgs and not is_ready:
         st.markdown("""
-<div class="glass-card" style="padding:1.2rem 1.3rem;">
-  <div style="color:#7b5cf5;font-weight:700;font-size:0.72rem;margin-bottom:0.8rem;letter-spacing:0.08em;">🧠 POWERED BY</div>
-  <div style="display:flex;flex-direction:column;gap:0.45rem;">
-    <div style="background:rgba(8,18,38,0.7);border:1px solid rgba(99,60,255,0.15);border-radius:8px;padding:0.65rem 0.8rem;display:flex;justify-content:space-between;align-items:center;">
-      <div><div style="color:#e2e8f0;font-size:0.8rem;font-weight:600;">HuggingFace Embeddings</div>
-      <div style="color:#475569;font-size:0.7rem;">all-MiniLM-L6-v2 · 384-dim vectors</div></div>
-      <span style="color:#7b5cf5;font-size:0.68rem;font-weight:600;">EMBED</span>
-    </div>
-    <div style="background:rgba(8,18,38,0.7);border:1px solid rgba(99,60,255,0.15);border-radius:8px;padding:0.65rem 0.8rem;display:flex;justify-content:space-between;align-items:center;">
-      <div><div style="color:#e2e8f0;font-size:0.8rem;font-weight:600;">FAISS Vector Store</div>
-      <div style="color:#475569;font-size:0.7rem;">IndexFlatIP · cosine similarity</div></div>
-      <span style="color:#4fc3f7;font-size:0.68rem;font-weight:600;">STORE</span>
-    </div>
-    <div style="background:rgba(8,18,38,0.7);border:1px solid rgba(99,60,255,0.15);border-radius:8px;padding:0.65rem 0.8rem;display:flex;justify-content:space-between;align-items:center;">
-      <div><div style="color:#e2e8f0;font-size:0.8rem;font-weight:600;">BM25 + CrossEncoder</div>
-      <div style="color:#475569;font-size:0.7rem;">Hybrid search · reranking</div></div>
-      <span style="color:#00d450;font-size:0.68rem;font-weight:600;">RANK</span>
-    </div>
-    <div style="background:rgba(8,18,38,0.7);border:1px solid rgba(99,60,255,0.15);border-radius:8px;padding:0.65rem 0.8rem;display:flex;justify-content:space-between;align-items:center;">
-      <div><div style="color:#e2e8f0;font-size:0.8rem;font-weight:600;">Google Gemini</div>
-      <div style="color:#475569;font-size:0.7rem;">Context-grounded generation</div></div>
-      <span style="color:#f59e0b;font-size:0.68rem;font-weight:600;">GENERATE</span>
+<div class="glass-card" style="padding:1.2rem 1.3rem;justify-content:space-between;">
+  <div>
+    <div style="color:#7b5cf5;font-weight:700;font-size:0.72rem;margin-bottom:0.8rem;letter-spacing:0.08em;">🧠 POWERED BY</div>
+    <div style="display:flex;flex-direction:column;gap:0.45rem;">
+      <div style="background:rgba(8,18,38,0.7);border:1px solid rgba(99,60,255,0.15);border-radius:8px;padding:0.65rem 0.8rem;display:flex;justify-content:space-between;align-items:center;">
+        <div><div style="color:#e2e8f0;font-size:0.8rem;font-weight:600;">HuggingFace Embeddings</div>
+        <div style="color:#475569;font-size:0.7rem;">all-MiniLM-L6-v2 · 384-dim vectors</div></div>
+        <span style="color:#7b5cf5;font-size:0.68rem;font-weight:600;">EMBED</span>
+      </div>
+      <div style="background:rgba(8,18,38,0.7);border:1px solid rgba(99,60,255,0.15);border-radius:8px;padding:0.65rem 0.8rem;display:flex;justify-content:space-between;align-items:center;">
+        <div><div style="color:#e2e8f0;font-size:0.8rem;font-weight:600;">FAISS Vector Store</div>
+        <div style="color:#475569;font-size:0.7rem;">IndexFlatIP · cosine similarity</div></div>
+        <span style="color:#4fc3f7;font-size:0.68rem;font-weight:600;">STORE</span>
+      </div>
+      <div style="background:rgba(8,18,38,0.7);border:1px solid rgba(99,60,255,0.15);border-radius:8px;padding:0.65rem 0.8rem;display:flex;justify-content:space-between;align-items:center;">
+        <div><div style="color:#e2e8f0;font-size:0.8rem;font-weight:600;">BM25 + CrossEncoder</div>
+        <div style="color:#475569;font-size:0.7rem;">Hybrid search · reranking</div></div>
+        <span style="color:#00d450;font-size:0.68rem;font-weight:600;">RANK</span>
+      </div>
+      <div style="background:rgba(8,18,38,0.7);border:1px solid rgba(99,60,255,0.15);border-radius:8px;padding:0.65rem 0.8rem;display:flex;justify-content:space-between;align-items:center;">
+        <div><div style="color:#e2e8f0;font-size:0.8rem;font-weight:600;">Google Gemini</div>
+        <div style="color:#475569;font-size:0.7rem;">Context-grounded generation</div></div>
+        <span style="color:#f59e0b;font-size:0.68rem;font-weight:600;">GENERATE</span>
+      </div>
     </div>
   </div>
   <div style="margin-top:0.8rem;padding-top:0.65rem;border-top:1px solid rgba(99,60,255,0.12);display:flex;justify-content:space-around;">
@@ -709,6 +809,7 @@ with src_col:
                     unsafe_allow_html=True)
 
 # ── Input ─────────────────────────────────────────────────────────────────────
+st.markdown('<div style="height:1.2rem;"></div>', unsafe_allow_html=True)
 if st.session_state.selected_docs:
     docs_str = ", ".join(list(st.session_state.selected_docs)[:2])
     if len(st.session_state.selected_docs) > 2:
@@ -774,7 +875,7 @@ if send and question.strip():
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown(
-    '<div style="text-align:center;color:#1e293b;font-size:0.67rem;margin-top:0.4rem;">'
+    '<div style="text-align:center;color:#475569;font-size:0.67rem;margin-top:1rem;padding-bottom:0.5rem;">'
     'IntelliRAG · HuggingFace + FAISS + BM25 + CrossEncoder + Google Gemini · Streamlit'
     '</div>',
     unsafe_allow_html=True)

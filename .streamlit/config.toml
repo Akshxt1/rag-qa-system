@@ -1,0 +1,5 @@
+[server]
+# Prevent Streamlit's file watcher from scanning installed packages
+# (eliminates spurious torchvision/transformers ModuleNotFoundError noise)
+folderWatchBlacklist = [".venv", "venv", "env", "site-packages", "transformers", "sentence_transformers"]
+fileWatcherType = "auto"

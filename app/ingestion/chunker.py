@@ -20,10 +20,17 @@ class TextChunker:
         raw_chunks = self._build_chunks(sentences)
 
         chunks = []
+        last_page = None
         for idx, chunk_text in enumerate(raw_chunks):
             # Extract page numbers from markers
             page_nums = re.findall(r'\[PAGE (\d+)\]', chunk_text)
             page_nums = sorted(set(int(p) for p in page_nums))
+
+            # Overlap chunks may have no marker — inherit last known page
+            if not page_nums and last_page is not None:
+                page_nums = [last_page]
+            if page_nums:
+                last_page = page_nums[-1]
 
             # Clean page markers from displayed text
             clean_text = re.sub(r'\[PAGE \d+\]\n?', '', chunk_text).strip()
