@@ -46,48 +46,48 @@ Built as a portfolio project demonstrating end-to-end ML engineering: from docum
 ## 🏗️ Architecture
 
 ```
-                        ┌─────────────────────────────────────────┐
-                        │            IntelliRAG Pipeline           │
-                        │                                          │
-  Documents             │  ┌──────────┐    ┌───────────────────┐  │
-  PDF/DOCX/TXT  ──────► │  │  Loader  │──► │  Text Chunker     │  │
-                        │  │ +page no.│    │  (sentence-aware   │  │
-                        │  │ +cleanup │    │   + overlap +      │  │
-                        │  └──────────┘    │   page inheritance)│  │
-                        │                 └────────┬──────────┘  │
-                        │                          │              │
-                        │                          ▼              │
-                        │               ┌─────────────────┐       │
-                        │               │  HuggingFace    │       │
-                        │               │  Embedder       │       │
-                        │               │ all-MiniLM-L6   │       │
-                        │               └────────┬────────┘       │
-                        │                        │                │
-                        │              ┌─────────▼────────┐       │
-                        │              │  FAISS + BM25    │       │
-                        │              │  Vector Store    │       │
-                        │              │  (persistent)    │       │
-                        │              └─────────┬────────┘       │
-                        │                        │                │
-  User Query   ──────► │         ┌──────────────▼──────────────┐ │
-                        │         │      Hybrid Retrieval       │ │
-                        │         │  FAISS + BM25 + RRF Fusion  │ │
-                        │         └──────────────┬──────────────┘ │
-                        │                        │                │
-                        │         ┌──────────────▼──────────────┐ │
-                        │         │   CrossEncoder Reranker     │ │
-                        │         │   ms-marco-MiniLM-L-6-v2   │ │
-                        │         └──────────────┬──────────────┘ │
-                        │                        │                │
-                        │         ┌──────────────▼──────────────┐ │
-                        │         │      Google Gemini          │ │
-                        │         │  (context-grounded RAG      │ │
-                        │         │   prompt + page citations)  │ │
-                        │         └──────────────┬──────────────┘ │
-                        └────────────────────────┼────────────────┘
+                        ┌───────────────────────────────────────────┐
+                        │            IntelliRAG Pipeline            │
+                        │                                           │
+  Documents             │  ┌──────────┐    ┌───────────────────┐    │
+  PDF/DOCX/TXT  ──────► │  │  Loader  │──► │   Text Chunker    │    │
+                        │  │ +page no.│    │ (sentence-aware   │    │
+                        │  │ +cleanup │    │   + overlap +     │    │
+                        │  └──────────┘    │ page inheritance) │    │
+                        │                  └────────┬──────────┘    │
+                        │                           │               │
+                        │                           ▼               │
+                        │               ┌─────────────────┐         │
+                        │               │  HuggingFace    │         │
+                        │               │  Embedder       │         │
+                        │               │ all-MiniLM-L6   │         │
+                        │               └────────┬────────┘         │
+                        │                        │                  │
+                        │              ┌─────────▼────────┐         │
+                        │              │  FAISS + BM25    │         │
+                        │              │  Vector Store    │         │
+                        │              │  (persistent)    │         │
+                        │              └─────────┬────────┘         │
+                        │                        │                  │
+  User Query   ──────►  │         ┌──────────────▼──────────────┐   │
+                        │         │      Hybrid Retrieval       │   │
+                        │         │  FAISS + BM25 + RRF Fusion  │   │
+                        │         └──────────────┬──────────────┘   │
+                        │                        │                  │
+                        │         ┌──────────────▼──────────────┐   │
+                        │         │   CrossEncoder Reranker     │   │
+                        │         │   ms-marco-MiniLM-L-6-v2    │   │
+                        │         └──────────────┬──────────────┘   │
+                        │                        │                  │
+                        │         ┌──────────────▼──────────────┐   │
+                        │         │      Google Gemini          │   │
+                        │         │  (context-grounded RAG      │   │
+                        │         │   prompt + page citations)  │   │
+                        │         └──────────────┬──────────────┘   │
+                        └────────────────────────┼──────────────────┘
                                                  │
                                                  ▼
-                                    Answer + Page Citations
+                                       Answer + Page Citations
 ```
 
 ---
